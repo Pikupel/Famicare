@@ -110,6 +110,10 @@ export default function HomeScreen() {
       </View>
 
       <ScrollView style={{ flex: 1, paddingTop: spacing.md }} showsVerticalScrollIndicator={false}>
+        <View style={{ backgroundColor: colors.primary, borderRadius: borderRadius.card, padding: 20, marginHorizontal: spacing.lg, marginBottom: spacing.md }}>
+          <Text style={{ ...typography.h3, color: '#FFFFFF', marginBottom: spacing.xs }}>Ailemle Sağlık</Text>
+          <Text style={{ ...typography.body, color: 'rgba(255,255,255,0.8)' }}>Sevdiklerinizin sağlığını birlikte takip edin.</Text>
+        </View>
         <View style={[styles.card, shadow.card]}>
           <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: spacing.sm }}>
             <Text style={{ ...typography.h3, color: colors.text }}>Bugünkü İlaçlar</Text>
