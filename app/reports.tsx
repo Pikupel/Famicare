@@ -1,0 +1,100 @@
+import { useState, useCallback } from 'react';
+import { View, Text, TouchableOpacity, StyleSheet, ScrollView, ActivityIndicator } from 'react-native';
+import { useRouter, useFocusEffect } from 'expo-router';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { colors } from '../src/theme/colors';
+import { typography } from '../src/theme/typography';
+import { spacing, borderRadius, shadow } from '../src/theme/spacing';
+import { api } from '../src/services/api';
+import { useAuthStore } from '../src/stores/useAuthStore';
+import { Button } from '../src/components/Button';
+
+const DAYS = ['Pzt', 'Sal', 'Çar', 'Per', 'Cum', 'Cmt', 'Paz'];
+const WEEK_DATA = [85, 92, 100, 88, 94, 80, 75];
+
+export default function ReportsScreen() {
+  const router = useRouter();
+  const insets = useSafeAreaInsets();
+  const userId = useAuthStore((s) => s.userId);
+  const [logs, setLogs] = useState<any[]>([]);
+  const [medications, setMedications] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [period, setPeriod] = useState<'weekly' | 'monthly'>('weekly');
+
+  useFocusEffect(useCallback(() => {
+    if (!userId) { setLoading(false); return; }
+    Promise.all([
+      api.get<any[]>(`/medications/profile/${userId}`),
+      api.get<any[]>(`/medications/profile/${userId}/logs?range=90d`),
+    ]).then(([meds, logData]) => {
+      setMedications(meds);
+      setLogs(logData);
+    }).catch(() => {}).finally(() => setLoading(false));
+  }, [userId]));
+
+  const totalDoses = medications.reduce((s, m) => s + (m.times?.length || 0), 0);
+  const today = new Date().toISOString().split('T')[0];
+  const todayLogs = logs.filter(l => l.date === today);
+  const takenToday = todayLogs.filter(l => l.status === 'taken').length;
+  const avgAdherence = totalDoses > 0 ? Math.min(100, Math.round((todayLogs.filter(l => l.status === 'taken').length / totalDoses) * 100)) : 0;
+
+  if (loading) return <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: colors.background }}>
+    <ActivityIndicator size="large" color={colors.primary} />
+  </View>;
+
+  return (
+    <View style={{ flex: 1, backgroundColor: colors.background }}>
+      <View style={{ paddingTop: 56, paddingHorizontal: spacing.lg, paddingBottom: spacing.md, backgroundColor: colors.surface }}>
+        <TouchableOpacity onPress={() => router.back()} style={{ minHeight: 48, justifyContent: 'center' }}><Text style={{ fontSize: 28, color: colors.text }}>←</Text></TouchableOpacity>
+        <Text style={{ ...typography.h2, color: colors.text, marginTop: spacing.sm }}>Raporlar</Text>
+      </View>
+
+      <ScrollView style={{ flex: 1, padding: spacing.lg }} showsVerticalScrollIndicator={false}>
+        <View style={[styles.adherenceCard, shadow.card]}>
+          <Text style={{ ...typography.h3, color: colors.text, marginBottom: spacing.md }}>İlaç Uyum Oranı</Text>
+          <View style={{ flexDirection: 'row', backgroundColor: colors.background, borderRadius: 10, padding: 3, marginBottom: spacing.lg }}>
+            {['Haftalık', 'Aylık'].map((p, i) => (
+              <TouchableOpacity key={p} style={[styles.periodBtn, (i === 0 && period === 'weekly') || (i === 1 && period === 'monthly') ? { backgroundColor: colors.surface, shadowColor: '#000', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.1, shadowRadius: 2, elevation: 2 } : {}]} onPress={() => setPeriod(i === 0 ? 'weekly' : 'monthly')}>
+                <Text style={{ ...typography.small, color: (i === 0 && period === 'weekly') || (i === 1 && period === 'monthly') ? colors.primary : colors.textLight, fontWeight: '600' }}>{p}</Text>
+              </TouchableOpacity>
+            ))}
+          </View>
+
+          <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-end', height: 140, paddingBottom: 24 }}>
+            {WEEK_DATA.map((val, i) => (
+              <View key={i} style={{ alignItems: 'center', flex: 1 }}>
+                <Text style={{ ...typography.small, color: colors.textSecondary, fontSize: 10, marginBottom: 4 }}>%{val}</Text>
+                <View style={{ width: 24, height: (val / 100) * 100, backgroundColor: val === 100 ? colors.primary : colors.primaryLight, borderRadius: 6, opacity: 0.6 + (val / 100) * 0.4 }} />
+                <Text style={{ ...typography.small, color: colors.textLight, marginTop: spacing.xs, fontSize: 10 }}>{DAYS[i]}</Text>
+              </View>
+            ))}
+          </View>
+        </View>
+
+        <View style={{ flexDirection: 'row', gap: spacing.sm, marginBottom: spacing.lg }}>
+          <View style={[styles.statCard, { flex: 1, borderLeftColor: colors.secondary }]}>
+            <Text style={{ ...typography.h2, color: colors.secondary, textAlign: 'center' }}>%{avgAdherence}</Text>
+            <Text style={{ ...typography.small, color: colors.textLight, textAlign: 'center' }}>Bugün</Text>
+          </View>
+          <View style={[styles.statCard, { flex: 1, borderLeftColor: colors.primary }]}>
+            <Text style={{ ...typography.h2, color: colors.primary, textAlign: 'center' }}>{takenToday}/{totalDoses}</Text>
+            <Text style={{ ...typography.small, color: colors.textLight, textAlign: 'center' }}>Doz</Text>
+          </View>
+          <View style={[styles.statCard, { flex: 1, borderLeftColor: colors.warning }]}>
+            <Text style={{ ...typography.h2, color: colors.warning, textAlign: 'center' }}>{totalDoses - takenToday}</Text>
+            <Text style={{ ...typography.small, color: colors.textLight, textAlign: 'center' }}>Kalan</Text>
+          </View>
+        </View>
+
+        <Button title="📄 PDF Raporu İndir" variant="outline" onPress={() => {}} style={{ marginBottom: spacing.xxl }} />
+      </ScrollView>
+    </View>
+  );
+}
+
+const styles = StyleSheet.create({
+  adherenceCard: { backgroundColor: colors.surface, borderRadius: borderRadius.card, padding: 20, marginBottom: spacing.lg },
+  periodBtn: { flex: 1, paddingVertical: 8, alignItems: 'center', borderRadius: 8 },
+  statBox: { flex: 1, backgroundColor: colors.surface, borderRadius: borderRadius.card, padding: 16, marginBottom: spacing.md },
+  statCard: { backgroundColor: colors.surface, borderRadius: borderRadius.card, padding: 14, borderLeftWidth: 3 },
+});
