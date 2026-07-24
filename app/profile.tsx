@@ -105,8 +105,20 @@ export default function ProfileScreen() {
           </>
         )}
 
-        {!isCaregiverView && (
+          {!isCaregiverView && (
           <>
+            <View style={[styles.section, shadow.card]}>
+              <Text style={{ ...typography.h3, color: colors.text, marginBottom: spacing.sm }}>Vital Bulgular</Text>
+              <View style={{ flexDirection: 'row', gap: spacing.sm }}>
+                {[{ icon: '🩸', label: 'Kan Grubu', value: 'A Rh+' }, { icon: '📏', label: 'Boy', value: '178 cm' }, { icon: '⚖️', label: 'Kilo', value: '82 kg' }].map((v, i) => (
+                  <View key={i} style={{ flex: 1, alignItems: 'center', padding: 12, backgroundColor: colors.surfaceVariant + '40', borderRadius: 12 }}>
+                    <Text style={{ fontSize: 22, marginBottom: 4 }}>{v.icon}</Text>
+                    <Text style={{ ...typography.h3, color: colors.text }}>{v.value}</Text>
+                    <Text style={{ ...typography.small, color: colors.textLight }}>{v.label}</Text>
+                  </View>
+                ))}
+              </View>
+            </View>
             <View style={[styles.section, shadow.card]}>
               <Text style={{ ...typography.h3, color: colors.text, marginBottom: spacing.sm }}>Hızlı İşlemler</Text>
               <TouchableOpacity style={styles.action} onPress={() => router.push('/add-medication')}>

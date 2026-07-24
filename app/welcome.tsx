@@ -1,65 +1,57 @@
-import { useEffect, useState } from 'react';
-import { View, Text, TouchableOpacity, StyleSheet, Image } from 'react-native';
+import { View, Text, TouchableOpacity, StyleSheet, ScrollView } from 'react-native';
 import { useRouter } from 'expo-router';
-import AsyncStorage from '@react-native-async-storage/async-storage';
 import { colors } from '../src/theme/colors';
 import { typography } from '../src/theme/typography';
-import { spacing } from '../src/theme/spacing';
-import { Button } from '../src/components/Button';
+import { spacing, borderRadius } from '../src/theme/spacing';
 import { useAuthStore } from '../src/stores/useAuthStore';
+
+const PROFILES = [
+  { id: 'self', icon: '👤', label: 'Kendim', desc: 'Kendi sağlığımı takip et', role: 'elderly', color: colors.primary },
+  { id: 'child', icon: '👶', label: 'Çocuğum', desc: 'Çocuğumun ilaçlarını yönet', role: 'caregiver', color: colors.secondary },
+  { id: 'mother', icon: '👩', label: 'Annem', desc: 'Annemin sağlığını takip et', role: 'caregiver', color: colors.tertiary },
+  { id: 'father', icon: '👨', label: 'Babam', desc: 'Babamın ilaçlarını yönet', role: 'caregiver', color: colors.primaryLight },
+  { id: 'spouse', icon: '💑', label: 'Eşim', desc: 'Eşimin tedavisini yönet', role: 'caregiver', color: colors.secondaryContainer },
+  { id: 'other', icon: '👥', label: 'Yakınım', desc: 'Bir yakınım için kurulum', role: 'caregiver', color: colors.surfaceVariant },
+];
 
 export default function WelcomeScreen() {
   const router = useRouter();
   const setRole = useAuthStore((s) => s.setRole);
-  const isLoggedIn = useAuthStore((s) => s.isLoggedIn);
-  const role = useAuthStore((s) => s.role);
-
-  useEffect(() => {
-    if (isLoggedIn && role) {
-      router.replace(role === 'caregiver' ? '/caregiver' : '/home');
-    }
-  }, [isLoggedIn, role]);
-
-  if (isLoggedIn && role) return null;
 
   return (
-    <View style={styles.container}>
-      <View style={styles.top}>
-        <View style={styles.logoCircle}>
-          <Image source={require('../assets/logo.png')} style={{ width: 72, height: 72 }} resizeMode="contain" />
-        </View>
-        <Text style={styles.brand}>Famicare</Text>
-        <Text style={styles.slogan}>Sevdikleriniz güvende,{'\n'}siz içiniz rahat.</Text>
+    <ScrollView style={{ flex: 1, backgroundColor: colors.background }} contentContainerStyle={{ paddingBottom: spacing.xxl }}>
+      <View style={{ alignItems: 'center', paddingTop: 80, paddingHorizontal: spacing.lg, marginBottom: spacing.xl }}>
+        <Text style={{ ...typography.h1, color: colors.primary, marginBottom: spacing.sm }}>Famicare</Text>
+        <Text style={{ ...typography.h3, color: colors.textSecondary, textAlign: 'center', lineHeight: 28 }}>
+          Sevdikleriniz güvende,{'\n'}siz içiniz rahat.
+        </Text>
       </View>
 
-      <View style={styles.bottom}>
-        <Button title="Yakınım İçin" onPress={() => { setRole('caregiver'); router.replace('/login'); }} />
-        <Text style={styles.desc}>Annem, babam veya bir yakınım için{'\n'}kurulum yapacağım.</Text>
-        <View style={styles.divider} />
-        <Button title="Kendim İçin" variant="outline" onPress={() => { setRole('elderly'); router.replace('/login'); }} />
-        <Text style={styles.desc}>Kendi ilaçlarımı ve randevularımı{'\n'}takip edeceğim.</Text>
-        <View style={styles.langRow}>
-          {['TR', 'PT', 'EN'].map((l, i) => (
-            <TouchableOpacity key={l} style={[styles.langBtn, i === 0 && { borderColor: colors.primary }]}>
-              <Text style={[styles.langText, i === 0 && { color: colors.primary, fontWeight: '600' }]}>{l}</Text>
-            </TouchableOpacity>
-          ))}
-        </View>
+      <View style={{ flexDirection: 'row', flexWrap: 'wrap', paddingHorizontal: spacing.md, gap: spacing.sm }}>
+        {PROFILES.map((p) => (
+          <TouchableOpacity
+            key={p.id}
+            style={[styles.card, { borderColor: p.color + '40' }]}
+            onPress={() => { setRole(p.role as 'caregiver' | 'elderly'); router.push('/login'); }}
+          >
+            <Text style={{ fontSize: 36, marginBottom: spacing.sm }}>{p.icon}</Text>
+            <Text style={{ ...typography.body, fontWeight: '600', color: colors.text, textAlign: 'center' }}>{p.label}</Text>
+            <Text style={{ ...typography.small, color: colors.textLight, textAlign: 'center', marginTop: 4 }}>{p.desc}</Text>
+          </TouchableOpacity>
+        ))}
       </View>
-    </View>
+
+      <Text style={{ ...typography.small, color: colors.textLight, textAlign: 'center', marginTop: spacing.xl, paddingHorizontal: spacing.lg }}>
+        Seçiminiz daha sonra değiştirilebilir.
+      </Text>
+    </ScrollView>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: colors.background, paddingHorizontal: spacing.lg, justifyContent: 'center' },
-  top: { alignItems: 'center', marginBottom: spacing.xl },
-  logoCircle: { width: 88, height: 88, borderRadius: 44, backgroundColor: colors.primaryLight + '30', alignItems: 'center', justifyContent: 'center', marginBottom: spacing.md },
-  brand: { ...typography.h1, color: colors.primary, marginBottom: spacing.sm },
-  slogan: { ...typography.h3, color: colors.textSecondary, textAlign: 'center', lineHeight: 28 },
-  bottom: { alignItems: 'center' },
-  desc: { ...typography.caption, color: colors.textSecondary, textAlign: 'center', lineHeight: 20, marginTop: spacing.xs, marginBottom: spacing.md },
-  divider: { width: '60%', height: 1, backgroundColor: colors.border, marginBottom: spacing.md },
-  langRow: { flexDirection: 'row', marginTop: spacing.xl, gap: spacing.sm },
-  langBtn: { paddingHorizontal: spacing.md, paddingVertical: spacing.xs, borderRadius: 8, backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border },
-  langText: { ...typography.caption, color: colors.textLight },
+  card: {
+    width: '48%', backgroundColor: colors.surface, borderRadius: borderRadius.card,
+    padding: 20, alignItems: 'center', borderWidth: 1.5, minHeight: 140,
+    shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.04, shadowRadius: 6, elevation: 2,
+  },
 });

@@ -92,9 +92,16 @@ export default function AppointmentsScreen() {
                 <View style={[styles.bar, { backgroundColor: colors.primary }]} />
                 <View style={{ flex: 1, paddingLeft: spacing.md }}>
                   <Text style={{ ...typography.h3, color: colors.text }}>{a.title}</Text>
-                  <View style={{ flexDirection: 'row', marginTop: spacing.xs, gap: spacing.md }}>
-                    <Text style={{ ...typography.caption, color: colors.textSecondary }}>⏰ {a.time}</Text>
-                    <Text style={{ ...typography.caption, color: colors.textSecondary }}>📍 {a.location}</Text>
+                  <View style={{ flexDirection: 'row', flexWrap: 'wrap', marginTop: spacing.xs, gap: spacing.sm }}>
+                    <View style={{ backgroundColor: colors.primary + '10', paddingHorizontal: 8, paddingVertical: 2, borderRadius: 6 }}>
+                      <Text style={{ ...typography.small, color: colors.primary, fontWeight: '600' }}>⏰ {a.time}</Text>
+                    </View>
+                    {a.doctorName ? <View style={{ backgroundColor: colors.secondary + '10', paddingHorizontal: 8, paddingVertical: 2, borderRadius: 6 }}>
+                      <Text style={{ ...typography.small, color: colors.secondary, fontWeight: '600' }}>👨‍⚕️ {a.doctorName}</Text>
+                    </View> : null}
+                    {a.location ? <View style={{ backgroundColor: colors.tertiary + '10', paddingHorizontal: 8, paddingVertical: 2, borderRadius: 6 }}>
+                      <Text style={{ ...typography.small, color: colors.tertiary, fontWeight: '600' }}>📍 {a.location}</Text>
+                    </View> : null}
                   </View>
                   {a.notes ? <Text style={{ ...typography.small, color: colors.textLight, marginTop: 4, fontStyle: 'italic' }}>📝 {a.notes}</Text> : null}
                 </View>
