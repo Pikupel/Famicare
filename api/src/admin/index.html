@@ -7,9 +7,10 @@
 <style>
 * { margin: 0; padding: 0; box-sizing: border-box; }
 body { font-family: system-ui, -apple-system, sans-serif; background: #f5f5f5; color: #1e293b; }
-.header { background: #6C4DFF; color: white; padding: 16px 24px; }
+.header { background: #6C4DFF; color: white; padding: 16px 24px; display: flex; justify-content: space-between; align-items: center; }
 .header h1 { font-size: 20px; }
-.container { max-width: 1000px; margin: 0 auto; padding: 24px; }
+.header a { color: rgba(255,255,255,0.8); text-decoration: none; font-size: 14px; }
+.container { max-width: 1200px; margin: 0 auto; padding: 24px; }
 .card { background: white; border-radius: 12px; padding: 20px; margin-bottom: 16px; box-shadow: 0 2px 8px rgba(0,0,0,0.06); }
 .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 12px; }
 .stat { text-align: center; padding: 16px; }
@@ -20,28 +21,44 @@ th, td { text-align: left; padding: 10px 8px; border-bottom: 1px solid #e2e8f0; 
 th { color: #64748b; font-weight: 600; }
 .btn { background: #6C4DFF; color: white; border: none; border-radius: 8px; padding: 10px 20px; cursor: pointer; font-size: 14px; margin-right: 8px; }
 .btn:hover { opacity: 0.9; }
+.btn-sm { padding: 4px 12px; font-size: 12px; }
 .btn-danger { background: #ef4444; }
-input { border: 1px solid #e2e8f0; border-radius: 8px; padding: 8px 12px; font-size: 14px; margin-bottom: 12px; width: 100%; max-width: 300px; }
-.tab { display: inline-block; padding: 8px 16px; cursor: pointer; border-bottom: 2px solid transparent; }
+.btn-warning { background: #f59e0b; }
+input, select { border: 1px solid #e2e8f0; border-radius: 8px; padding: 8px 12px; font-size: 14px; margin-bottom: 12px; width: 100%; max-width: 300px; }
+.tab { display: inline-block; padding: 8px 16px; cursor: pointer; border-bottom: 2px solid transparent; color: #64748b; }
 .tab.active { border-bottom-color: #6C4DFF; color: #6C4DFF; font-weight: 600; }
 .tab-content { display: none; }
 .tab-content.active { display: block; }
 .log { font-family: monospace; font-size: 12px; background: #1e293b; color: #22c55e; padding: 16px; border-radius: 8px; max-height: 300px; overflow-y: auto; white-space: pre-wrap; }
+.badge { display: inline-block; padding: 2px 8px; border-radius: 10px; font-size: 11px; font-weight: 600; }
+.badge-green { background: #dcfce7; color: #16a34a; }
+.badge-red { background: #fef2f2; color: #dc2626; }
+.badge-blue { background: #dbeafe; color: #2563eb; }
+.modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); justify-content: center; align-items: center; z-index: 100; }
+.modal.active { display: flex; }
+.modal-content { background: white; border-radius: 12px; padding: 24px; width: 90%; max-width: 500px; max-height: 80vh; overflow-y: auto; }
+.modal-content h3 { margin-bottom: 16px; }
+.modal-content label { display: block; font-size: 13px; color: #64748b; margin-bottom: 4px; margin-top: 12px; }
+.modal-content input { max-width: 100%; }
 </style>
 </head>
 <body>
-<div class="header"><h1>⚙️ Famicare Admin</h1></div>
+<div class="header">
+  <h1>⚙️ Famicare Admin</h1>
+  <a href="#" onclick="document.getElementById('adminKey').value='famicare-admin-2026';loadAll();return false">🔑 Giriş</a>
+</div>
 <div class="container">
-  <div style="margin-bottom: 16px">
-    <input type="password" id="adminKey" placeholder="Admin anahtarı" value="famicare-admin-2026" />
+  <div style="margin-bottom: 16px; display: flex; gap: 8px;">
+    <input type="password" id="adminKey" placeholder="Admin anahtarı" value="famicare-admin-2026" style="margin-bottom:0" />
     <button class="btn" onclick="loadAll()">Bağlan</button>
   </div>
 
-  <div class="card">
-    <span class="tab active" onclick="switchTab('dashboard', this)">Dashboard</span>
-    <span class="tab" onclick="switchTab('users', this)">Kullanıcılar</span>
-    <span class="tab" onclick="switchTab('drugs', this)">İlaç Katalog</span>
-    <span class="tab" onclick="switchTab('logs', this)">Loglar</span>
+  <div class="card" style="padding:8px 20px">
+    <span class="tab active" onclick="switchTab('dashboard', this)">📊 Dashboard</span>
+    <span class="tab" onclick="switchTab('profiles', this)">👤 Profiller</span>
+    <span class="tab" onclick="switchTab('users', this)">👥 Kullanıcılar</span>
+    <span class="tab" onclick="switchTab('drugs', this)">💊 İlaçlar</span>
+    <span class="tab" onclick="switchTab('logs', this)">📋 Loglar</span>
   </div>
 
   <div id="tab-dashboard" class="tab-content active">
@@ -53,12 +70,19 @@ input { border: 1px solid #e2e8f0; border-radius: 8px; padding: 8px 12px; font-s
     </div>
   </div>
 
+  <div id="tab-profiles" class="tab-content">
+    <div class="card">
+      <div style="margin-bottom:12px"><button class="btn" onclick="loadProfiles()">🔄 Yenile</button></div>
+      <div style="overflow-x:auto"><table><thead><tr><th>Ad</th><th>Caregiver ID</th><th>Bağlı Kullanıcı</th><th>Davet Kodu</th><th style="width:140px">İşlem</th></tr></thead><tbody id="profilesTable"></tbody></table></div>
+    </div>
+  </div>
+
   <div id="tab-users" class="tab-content">
-    <div class="card"><table><thead><tr><th>Ad</th><th>Telefon</th><th>Rol</th><th>Kayıt</th></tr></thead><tbody id="usersTable"></tbody></table></div>
+    <div class="card"><div style="overflow-x:auto"><table><thead><tr><th>Ad</th><th>Telefon</th><th>Rol</th><th>Kayıt</th></tr></thead><tbody id="usersTable"></tbody></table></div></div>
   </div>
 
   <div id="tab-drugs" class="tab-content">
-    <div class="card"><table><thead><tr><th>İlaç</th><th>Barkod</th><th>ATC</th><th>Durum</th><th>RxCUI</th></tr></thead><tbody id="drugsTable"></tbody></table></div>
+    <div class="card"><div style="overflow-x:auto"><table><thead><tr><th>İlaç</th><th>Barkod</th><th>ATC</th><th>RxCUI</th><th>Durum</th></tr></thead><tbody id="drugsTable"></tbody></table></div></div>
   </div>
 
   <div id="tab-logs" class="tab-content">
@@ -66,17 +90,30 @@ input { border: 1px solid #e2e8f0; border-radius: 8px; padding: 8px 12px; font-s
   </div>
 </div>
 
+<div class="modal" id="editProfileModal">
+  <div class="modal-content">
+    <h3>✏️ Profil Düzenle</h3>
+    <label>Ad</label><input type="text" id="editProfileName" />
+    <label>İlişki</label>
+    <select id="editProfileRel"><option value="aile">Aile</option><option value="anne">Anne</option><option value="baba">Baba</option><option value="eş">Eş</option><option value="diğer">Diğer</option></select>
+    <div style="display:flex;gap:8px;margin-top:16px">
+      <button class="btn" onclick="saveProfile()">Kaydet</button>
+      <button class="btn btn-danger" onclick="closeModal()">İptal</button>
+    </div>
+  </div>
+</div>
+
 <script>
 const BASE = window.location.origin + '/api/v1/admin';
-let key = '';
+let editProfileId = null;
 
-function getKey() { key = document.getElementById('adminKey').value; return key; }
-function headers() { return { 'Content-Type': 'application/json', 'x-admin-key': getKey() }; }
+function key() { return document.getElementById('adminKey').value; }
+function h() { return { 'Content-Type': 'application/json', 'x-admin-key': key() }; }
 
-async function api(path, options = {}) {
-  const res = await fetch(BASE + path, { ...options, headers: { ...headers(), ...options.headers } });
-  if (!res.ok) { const e = await res.json(); throw new Error(e.error || 'Hata'); }
-  return res.json();
+async function api(path, opts = {}) {
+  const r = await fetch(BASE + path, { ...opts, headers: { ...h(), ...opts.headers } });
+  if (!r.ok) { const e = await r.json(); throw new Error(e.error || 'Hata'); }
+  return r.json();
 }
 
 function switchTab(name, el) {
@@ -84,46 +121,78 @@ function switchTab(name, el) {
   document.querySelectorAll('.tab-content').forEach(t => t.classList.remove('active'));
   el.classList.add('active');
   document.getElementById('tab-' + name).classList.add('active');
+  if (name === 'profiles') loadProfiles();
 }
 
 async function loadAll() {
   try {
-    const stats = await api('/stats');
+    const s = await api('/stats');
     document.getElementById('statsGrid').innerHTML = `
-      <div class="stat"><div class="stat-value">${stats.users}</div><div class="stat-label">Kullanıcı</div></div>
-      <div class="stat"><div class="stat-value">${stats.medications}</div><div class="stat-label">İlaç Kaydı</div></div>
-      <div class="stat"><div class="stat-value">${stats.activeDrugs}</div><div class="stat-label">Aktif İlaç (TİTCK)</div></div>
-      <div class="stat"><div class="stat-value">${stats.totalDrugs}</div><div class="stat-label">Toplam İlaç (TİTCK)</div></div>
-      <div class="stat"><div class="stat-value">${stats.healthRecords}</div><div class="stat-label">Sağlık Kaydı</div></div>
-      <div class="stat"><div class="stat-value">${stats.appointments}</div><div class="stat-label">Randevu</div></div>
-      <div class="stat"><div class="stat-value">${stats.notifications}</div><div class="stat-label">Bildirim</div></div>
-      <div class="stat"><div class="stat-value">${stats.lastImport ? new Date(stats.lastImport).toLocaleDateString('tr-TR') : '-'}</div><div class="stat-label">Son İmport</div></div>
-    `;
-
-    const users = await api('/users');
-    document.getElementById('usersTable').innerHTML = users.map(u => `
-      <tr><td>${u.name}</td><td>${u.phone || '-'}</td><td>${u.role}</td><td>${new Date(u.createdAt).toLocaleDateString('tr-TR')}</td></tr>
-    `).join('');
-
-    const drugs = await api('/drugs/search?q=a');
-    // Show drug catalog stats from the stats endpoint instead
+      <div class="stat"><div class="stat-value">${s.users}</div><div class="stat-label">Kullanıcı</div></div>
+      <div class="stat"><div class="stat-value">${s.medications}</div><div class="stat-label">İlaç Kaydı</div></div>
+      <div class="stat"><div class="stat-value">${s.activeDrugs}</div><div class="stat-label">Aktif İlaç</div></div>
+      <div class="stat"><div class="stat-value">${s.totalDrugs}</div><div class="stat-label">Toplam İlaç</div></div>
+      <div class="stat"><div class="stat-value">${s.healthRecords}</div><div class="stat-label">Sağlık Kaydı</div></div>
+      <div class="stat"><div class="stat-value">${s.appointments}</div><div class="stat-label">Randevu</div></div>
+      <div class="stat"><div class="stat-value">${s.notifications}</div><div class="stat-label">Bildirim</div></div>
+      <div class="stat"><div class="stat-value">${s.lastImport ? new Date(s.lastImport).toLocaleDateString('tr-TR') : '-'}</div><div class="stat-label">Son İmport</div></div>`;
+    const u = await api('/users');
+    document.getElementById('usersTable').innerHTML = u.map(x => `<tr><td>${x.name}</td><td>${x.phone||'-'}</td><td><span class="badge ${x.role==='caregiver'?'badge-blue':'badge-green'}">${x.role}</span></td><td>${new Date(x.createdAt).toLocaleDateString('tr-TR')}</td></tr>`).join('');
     log('✅ Veriler yüklendi');
-  } catch (e) { log('❌ Hata: ' + e.message); }
+  } catch(e) { log('❌ Hata: ' + e.message); }
+}
+
+async function loadProfiles() {
+  try {
+    const p = await api('/profiles');
+    document.getElementById('profilesTable').innerHTML = p.map(x => `<tr><td><strong>${x.name}</strong></td><td style="font-size:11px;color:#64748b">${(x.caregiverId||'').slice(0,8)}...</td><td>${x.linkedUserId ? '✅ Bağlı' : '❌ Boş'}</td><td style="font-size:12px">${x.inviteCode||'-'}</td><td>
+      <button class="btn btn-sm btn-warning" onclick="editProfile('${x.id}','${x.name.replace(/'/g,"\\'")}')">✎</button>
+      <button class="btn btn-sm btn-danger" onclick="deleteProfile('${x.id}','${x.name.replace(/'/g,"\\'")}')">🗑</button>
+    </td></tr>`).join('');
+  } catch(e) { log('❌ Profiller yüklenemedi: ' + e.message); }
+}
+
+function editProfile(id, name) {
+  editProfileId = id;
+  document.getElementById('editProfileName').value = name;
+  document.getElementById('editProfileModal').classList.add('active');
+}
+
+async function saveProfile() {
+  const name = document.getElementById('editProfileName').value;
+  if (!name) { alert('Ad gerekli'); return; }
+  try {
+    await api('/profiles/' + editProfileId, { method: 'PATCH', headers: h(), body: JSON.stringify({ name }) });
+    closeModal(); loadProfiles(); log('✅ Profil güncellendi');
+  } catch(e) { log('❌ ' + e.message); }
+}
+
+function closeModal() {
+  document.getElementById('editProfileModal').classList.remove('active');
+  editProfileId = null;
+}
+
+async function deleteProfile(id, name) {
+  if (!confirm('"' + name + '" silinsin mi?')) return;
+  try {
+    await api('/profiles/' + id, { method: 'DELETE' });
+    loadProfiles(); log('✅ "' + name + '" silindi');
+  } catch(e) { log('❌ ' + e.message); }
 }
 
 async function importDrugs() {
-  log('⏳ İlaç import başlatılıyor...');
-  try { const r = await api('/import-drugs', { method: 'POST' }); log('✅ ' + (r.message || 'Tamam')); } catch (e) { log('❌ ' + e.message); }
+  log('⏳ İlaç import...');
+  try { const r = await api('/import-drugs', { method: 'POST' }); log('✅ ' + (r.message||'Tamam')); } catch(e) { log('❌ ' + e.message); }
 }
 
 async function matchRxNav() {
-  log('⏳ RxNav eşleştirme başlatılıyor...');
-  try { const r = await api('/match-rxnav', { method: 'POST' }); log(`✅ Eşleşen: ${r.matched}, Başarısız: ${r.failed}, Kalan: ${r.remaining}`); } catch (e) { log('❌ ' + e.message); }
+  log('⏳ RxNav eşleştirme...');
+  try { const r = await api('/match-rxnav', { method: 'POST' }); log(`✅ Eşleşen: ${r.matched}, Başarısız: ${r.failed}, Kalan: ${r.remaining}`); } catch(e) { log('❌ ' + e.message); }
 }
 
-function log(msg) {
+function log(m) {
   const el = document.getElementById('actionLog');
-  el.textContent += '\n[' + new Date().toLocaleTimeString('tr-TR') + '] ' + msg;
+  el.textContent += '\n[' + new Date().toLocaleTimeString('tr-TR') + '] ' + m;
   el.scrollTop = el.scrollHeight;
 }
 </script>

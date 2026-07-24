@@ -81,6 +81,16 @@ router.get('/profiles', (req, res) => {
   res.json(db.data.profiles.map(p => ({ id: p.id, name: p.name, caregiverId: p.caregiverId, linkedUserId: p.linkedUserId, inviteCode: p.inviteCode })));
 });
 
+// Update a profile by ID
+router.patch('/profiles/:id', async (req, res) => {
+  const { name } = req.body;
+  const idx = db.data.profiles.findIndex(p => p.id === req.params.id);
+  if (idx === -1) return res.status(404).json({ error: 'Profil bulunamadı' });
+  if (name) db.data.profiles[idx].name = name;
+  await db.write();
+  res.json(db.data.profiles[idx]);
+});
+
 // Delete a profile by ID
 router.delete('/profiles/:id', async (req, res) => {
   const profile = db.data.profiles.find(p => p.id === req.params.id);
