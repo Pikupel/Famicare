@@ -1,6 +1,6 @@
 import { useAuthStore } from '../stores/useAuthStore';
 
-const BASE_URL = 'https://moody-deer-flash.loca.lt/api/v1';
+const BASE_URL = 'https://famicare-production-f63d.up.railway.app/api/v1';
 
 async function request<T>(method: string, path: string, body?: unknown): Promise<T> {
   const token = useAuthStore.getState().token;
