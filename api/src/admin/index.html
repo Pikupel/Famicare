@@ -78,7 +78,7 @@ input, select { border: 1px solid #e2e8f0; border-radius: 8px; padding: 8px 12px
   </div>
 
   <div id="tab-users" class="tab-content">
-    <div class="card"><div style="overflow-x:auto"><table><thead><tr><th>Ad</th><th>Telefon</th><th>Rol</th><th>Kayıt</th></tr></thead><tbody id="usersTable"></tbody></table></div></div>
+    <div class="card"><div style="overflow-x:auto"><table><thead><tr>                <th>Ad</th><th>Telefon</th><th>Rol</th><th>Kayıt</th><th style="width:80px">İşlem</th></tr></thead><tbody id="usersTable"></tbody></table></div></div>
   </div>
 
   <div id="tab-drugs" class="tab-content">
@@ -137,7 +137,7 @@ async function loadAll() {
       <div class="stat"><div class="stat-value">${s.notifications}</div><div class="stat-label">Bildirim</div></div>
       <div class="stat"><div class="stat-value">${s.lastImport ? new Date(s.lastImport).toLocaleDateString('tr-TR') : '-'}</div><div class="stat-label">Son İmport</div></div>`;
     const u = await api('/users');
-    document.getElementById('usersTable').innerHTML = u.map(x => `<tr><td>${x.name}</td><td>${x.phone||'-'}</td><td><span class="badge ${x.role==='caregiver'?'badge-blue':'badge-green'}">${x.role}</span></td><td>${new Date(x.createdAt).toLocaleDateString('tr-TR')}</td></tr>`).join('');
+    document.getElementById('usersTable').innerHTML = u.map(x => `<tr><td>${x.name}</td><td>${x.phone||'-'}</td><td><span class="badge ${x.role==='caregiver'?'badge-blue':'badge-green'}">${x.role}</span></td><td>${new Date(x.createdAt).toLocaleDateString('tr-TR')}</td><td><button class="btn btn-sm btn-danger" onclick="deleteUser('${x.id}','${x.name.replace(/'/g,"\\'")}')">🗑</button></td></tr>`).join('');
     log('✅ Veriler yüklendi');
   } catch(e) { log('❌ Hata: ' + e.message); }
 }
@@ -170,6 +170,14 @@ async function saveProfile() {
 function closeModal() {
   document.getElementById('editProfileModal').classList.remove('active');
   editProfileId = null;
+}
+
+async function deleteUser(id, name) {
+  if (!confirm('"' + name + '" ve tüm verileri silinsin mi?')) return;
+  try {
+    await api('/users/' + id, { method: 'DELETE' });
+    loadAll(); log('✅ "' + name + '" silindi');
+  } catch(e) { log('❌ ' + e.message); }
 }
 
 async function deleteProfile(id, name) {

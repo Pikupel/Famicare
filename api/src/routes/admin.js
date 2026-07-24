@@ -81,6 +81,16 @@ router.get('/profiles', (req, res) => {
   res.json(db.data.profiles.map(p => ({ id: p.id, name: p.name, caregiverId: p.caregiverId, linkedUserId: p.linkedUserId, inviteCode: p.inviteCode })));
 });
 
+// Delete a user by ID
+router.delete('/users/:id', async (req, res) => {
+  const user = db.data.users.find(u => u.id === req.params.id);
+  if (!user) return res.status(404).json({ error: 'Kullanıcı bulunamadı' });
+  db.data.users = db.data.users.filter(u => u.id !== req.params.id);
+  db.data.notifications = db.data.notifications.filter(n => n.userId !== req.params.id);
+  await db.write();
+  res.json({ success: true, deletedName: user.name });
+});
+
 // Update a profile by ID
 router.patch('/profiles/:id', async (req, res) => {
   const { name } = req.body;
