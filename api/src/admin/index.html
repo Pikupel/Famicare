@@ -1,0 +1,131 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Famicare Admin</title>
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body { font-family: system-ui, -apple-system, sans-serif; background: #f5f5f5; color: #1e293b; }
+.header { background: #6C4DFF; color: white; padding: 16px 24px; }
+.header h1 { font-size: 20px; }
+.container { max-width: 1000px; margin: 0 auto; padding: 24px; }
+.card { background: white; border-radius: 12px; padding: 20px; margin-bottom: 16px; box-shadow: 0 2px 8px rgba(0,0,0,0.06); }
+.grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 12px; }
+.stat { text-align: center; padding: 16px; }
+.stat-value { font-size: 28px; font-weight: 700; color: #6C4DFF; }
+.stat-label { font-size: 12px; color: #64748b; margin-top: 4px; }
+table { width: 100%; border-collapse: collapse; font-size: 14px; }
+th, td { text-align: left; padding: 10px 8px; border-bottom: 1px solid #e2e8f0; }
+th { color: #64748b; font-weight: 600; }
+.btn { background: #6C4DFF; color: white; border: none; border-radius: 8px; padding: 10px 20px; cursor: pointer; font-size: 14px; margin-right: 8px; }
+.btn:hover { opacity: 0.9; }
+.btn-danger { background: #ef4444; }
+input { border: 1px solid #e2e8f0; border-radius: 8px; padding: 8px 12px; font-size: 14px; margin-bottom: 12px; width: 100%; max-width: 300px; }
+.tab { display: inline-block; padding: 8px 16px; cursor: pointer; border-bottom: 2px solid transparent; }
+.tab.active { border-bottom-color: #6C4DFF; color: #6C4DFF; font-weight: 600; }
+.tab-content { display: none; }
+.tab-content.active { display: block; }
+.log { font-family: monospace; font-size: 12px; background: #1e293b; color: #22c55e; padding: 16px; border-radius: 8px; max-height: 300px; overflow-y: auto; white-space: pre-wrap; }
+</style>
+</head>
+<body>
+<div class="header"><h1>⚙️ Famicare Admin</h1></div>
+<div class="container">
+  <div style="margin-bottom: 16px">
+    <input type="password" id="adminKey" placeholder="Admin anahtarı" value="famicare-admin-2026" />
+    <button class="btn" onclick="loadAll()">Bağlan</button>
+  </div>
+
+  <div class="card">
+    <span class="tab active" onclick="switchTab('dashboard', this)">Dashboard</span>
+    <span class="tab" onclick="switchTab('users', this)">Kullanıcılar</span>
+    <span class="tab" onclick="switchTab('drugs', this)">İlaç Katalog</span>
+    <span class="tab" onclick="switchTab('logs', this)">Loglar</span>
+  </div>
+
+  <div id="tab-dashboard" class="tab-content active">
+    <div class="card"><div class="grid" id="statsGrid"></div></div>
+    <div class="card">
+      <button class="btn" onclick="importDrugs()">📥 TİTCK Import</button>
+      <button class="btn" onclick="matchRxNav()">🔗 RxNav Eşleştir</button>
+      <div id="actionLog" class="log" style="margin-top:12px">Hazır</div>
+    </div>
+  </div>
+
+  <div id="tab-users" class="tab-content">
+    <div class="card"><table><thead><tr><th>Ad</th><th>Telefon</th><th>Rol</th><th>Kayıt</th></tr></thead><tbody id="usersTable"></tbody></table></div>
+  </div>
+
+  <div id="tab-drugs" class="tab-content">
+    <div class="card"><table><thead><tr><th>İlaç</th><th>Barkod</th><th>ATC</th><th>Durum</th><th>RxCUI</th></tr></thead><tbody id="drugsTable"></tbody></table></div>
+  </div>
+
+  <div id="tab-logs" class="tab-content">
+    <div class="card"><div class="log" id="logsContent">Loglar burada görünecek.</div></div>
+  </div>
+</div>
+
+<script>
+const BASE = window.location.origin + '/api/v1/admin';
+let key = '';
+
+function getKey() { key = document.getElementById('adminKey').value; return key; }
+function headers() { return { 'Content-Type': 'application/json', 'x-admin-key': getKey() }; }
+
+async function api(path, options = {}) {
+  const res = await fetch(BASE + path, { ...options, headers: { ...headers(), ...options.headers } });
+  if (!res.ok) { const e = await res.json(); throw new Error(e.error || 'Hata'); }
+  return res.json();
+}
+
+function switchTab(name, el) {
+  document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+  document.querySelectorAll('.tab-content').forEach(t => t.classList.remove('active'));
+  el.classList.add('active');
+  document.getElementById('tab-' + name).classList.add('active');
+}
+
+async function loadAll() {
+  try {
+    const stats = await api('/stats');
+    document.getElementById('statsGrid').innerHTML = `
+      <div class="stat"><div class="stat-value">${stats.users}</div><div class="stat-label">Kullanıcı</div></div>
+      <div class="stat"><div class="stat-value">${stats.medications}</div><div class="stat-label">İlaç Kaydı</div></div>
+      <div class="stat"><div class="stat-value">${stats.activeDrugs}</div><div class="stat-label">Aktif İlaç (TİTCK)</div></div>
+      <div class="stat"><div class="stat-value">${stats.totalDrugs}</div><div class="stat-label">Toplam İlaç (TİTCK)</div></div>
+      <div class="stat"><div class="stat-value">${stats.healthRecords}</div><div class="stat-label">Sağlık Kaydı</div></div>
+      <div class="stat"><div class="stat-value">${stats.appointments}</div><div class="stat-label">Randevu</div></div>
+      <div class="stat"><div class="stat-value">${stats.notifications}</div><div class="stat-label">Bildirim</div></div>
+      <div class="stat"><div class="stat-value">${stats.lastImport ? new Date(stats.lastImport).toLocaleDateString('tr-TR') : '-'}</div><div class="stat-label">Son İmport</div></div>
+    `;
+
+    const users = await api('/users');
+    document.getElementById('usersTable').innerHTML = users.map(u => `
+      <tr><td>${u.name}</td><td>${u.phone || '-'}</td><td>${u.role}</td><td>${new Date(u.createdAt).toLocaleDateString('tr-TR')}</td></tr>
+    `).join('');
+
+    const drugs = await api('/drugs/search?q=a');
+    // Show drug catalog stats from the stats endpoint instead
+    log('✅ Veriler yüklendi');
+  } catch (e) { log('❌ Hata: ' + e.message); }
+}
+
+async function importDrugs() {
+  log('⏳ İlaç import başlatılıyor...');
+  try { const r = await api('/import-drugs', { method: 'POST' }); log('✅ ' + (r.message || 'Tamam')); } catch (e) { log('❌ ' + e.message); }
+}
+
+async function matchRxNav() {
+  log('⏳ RxNav eşleştirme başlatılıyor...');
+  try { const r = await api('/match-rxnav', { method: 'POST' }); log(`✅ Eşleşen: ${r.matched}, Başarısız: ${r.failed}, Kalan: ${r.remaining}`); } catch (e) { log('❌ ' + e.message); }
+}
+
+function log(msg) {
+  const el = document.getElementById('actionLog');
+  el.textContent += '\n[' + new Date().toLocaleTimeString('tr-TR') + '] ' + msg;
+  el.scrollTop = el.scrollHeight;
+}
+</script>
+</body>
+</html>
