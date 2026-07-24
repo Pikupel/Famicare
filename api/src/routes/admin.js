@@ -76,6 +76,11 @@ router.post('/match-rxnav', async (req, res) => {
   res.json({ matched, failed, remaining: drugs.length - matched - failed });
 });
 
+// List all profiles
+router.get('/profiles', (req, res) => {
+  res.json(db.data.profiles.map(p => ({ id: p.id, name: p.name, caregiverId: p.caregiverId, linkedUserId: p.linkedUserId, inviteCode: p.inviteCode })));
+});
+
 // Delete a profile by ID
 router.delete('/profiles/:id', async (req, res) => {
   const profile = db.data.profiles.find(p => p.id === req.params.id);
