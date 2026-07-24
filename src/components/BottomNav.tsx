@@ -19,21 +19,14 @@ interface BottomNavProps {
 export function BottomNav({ items, activeIndex }: BottomNavProps) {
   const router = useRouter();
   const insets = useSafeAreaInsets();
-  const role = useAuthStore((s) => s.role);
-
-  const handlePress = (item: NavItem) => {
-    if (!item.route) return;
-    const route = item.route.replace('{role}', role || 'elderly');
-    router.replace(route);
-  };
 
   return (
     <View style={[styles.container, { paddingBottom: insets.bottom + 8 }]}>
       {items.map((item, i) => (
         <TouchableOpacity
           key={item.label}
-          style={styles.item}
-          onPress={() => handlePress(item)}
+          style={[styles.item, i === activeIndex && styles.itemActive]}
+          onPress={() => item.route && router.replace(item.route)}
           activeOpacity={0.6}
         >
           <Text style={[styles.icon, { color: i === activeIndex ? colors.primary : colors.gray }]}>
@@ -49,8 +42,26 @@ export function BottomNav({ items, activeIndex }: BottomNavProps) {
 }
 
 const styles = StyleSheet.create({
-  container: { flexDirection: 'row', backgroundColor: colors.surface, paddingTop: 10, borderTopWidth: 1, borderTopColor: colors.border },
-  item: { flex: 1, alignItems: 'center', justifyContent: 'center', minHeight: 48, minWidth: 48 },
+  container: {
+    flexDirection: 'row',
+    backgroundColor: colors.surface,
+    paddingTop: 10,
+    borderTopWidth: 1,
+    borderTopColor: colors.border,
+  },
+  item: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    minHeight: 48,
+    minWidth: 48,
+    paddingVertical: 6,
+  },
+  itemActive: {
+    backgroundColor: colors.primary + '10',
+    borderRadius: 12,
+    marginHorizontal: 2,
+  },
   icon: { fontSize: 22, marginBottom: 2 },
-  label: { fontSize: 12, marginTop: 2 },
+  label: { fontSize: 11, marginTop: 2 },
 });
