@@ -73,7 +73,7 @@ export default function HomeScreen() {
     })();
   }, [userId]));
 
-  const [undoTimer, setUndoTimer] = useState<NodeJS.Timeout | null>(null);
+  const [undoTimer, setUndoTimer] = useState<ReturnType<typeof setTimeout> | null>(null);
 
   const take = async (id: string) => {
     setConfirmed(id);

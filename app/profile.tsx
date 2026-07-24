@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { View, Text, TouchableOpacity, StyleSheet, ScrollView } from 'react-native';
+import { View, Text, TouchableOpacity, StyleSheet, ScrollView, Alert } from 'react-native';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { colors } from '../src/theme/colors';
@@ -7,6 +7,7 @@ import { typography } from '../src/theme/typography';
 import { spacing, borderRadius, shadow } from '../src/theme/spacing';
 import { useAuthStore } from '../src/stores/useAuthStore';
 import { BottomNav } from '../src/components/BottomNav';
+import { api } from '../src/services/api';
 
 const AVATAR_EMOJI: Record<string, string> = {
   elderly_woman: '👵', elderly_man: '👴', elderly_hijabi: '🧕',
@@ -63,7 +64,7 @@ export default function ProfileScreen() {
         </View>
 
         {isCaregiverView && (
-          <View style={[styles.section, shadow.card]}>
+          <><View style={[styles.section, shadow.card]}>
             <Text style={{ ...typography.h3, color: colors.text, marginBottom: spacing.sm }}>Hızlı İşlemler</Text>
             <View style={{ backgroundColor: colors.primaryLight + '15', borderRadius: 12, padding: 12, marginBottom: spacing.sm }}>
               <Text style={{ ...typography.caption, color: colors.textSecondary }}>Davet Kodu</Text>
@@ -91,6 +92,17 @@ export default function ProfileScreen() {
               <Text style={{ fontSize: 20, color: colors.textLight }}>›</Text>
             </TouchableOpacity>
           </View>
+          <TouchableOpacity style={styles.deleteBtn} onPress={() => {
+            Alert.alert('Profili Sil', 'Bu profili silmek istediğinize emin misiniz? Tüm ilaç ve sağlık verileri kaybolacak.', [
+              { text: 'İptal', style: 'cancel' },
+              { text: 'Sil', style: 'destructive', onPress: async () => {
+                try { await api.del(`/profiles/${params.profileId}`); router.replace('/caregiver'); Alert.alert('Silindi'); } catch { Alert.alert('Hata', 'Silinemedi'); }
+              }},
+            ]);
+          }}>
+            <Text style={{ ...typography.button, color: colors.danger }}>Profili Sil</Text>
+          </TouchableOpacity>
+          </>
         )}
 
         {!isCaregiverView && (
@@ -136,5 +148,6 @@ const styles = StyleSheet.create({
   section: { backgroundColor: colors.surface, borderRadius: borderRadius.card, padding: 16, marginBottom: spacing.md },
   action: { flexDirection: 'row', alignItems: 'center', paddingVertical: 14, borderBottomWidth: 1, borderBottomColor: colors.border, minHeight: 48 },
   helpBtn: { marginTop: spacing.lg, padding: 16, alignItems: 'center', borderWidth: 1, borderColor: colors.border, borderRadius: borderRadius.button, minHeight: 48, justifyContent: 'center' },
+  deleteBtn: { marginTop: spacing.md, padding: 16, alignItems: 'center', borderWidth: 1, borderColor: colors.danger, borderRadius: borderRadius.button, minHeight: 48, justifyContent: 'center' },
   logoutBtn: { marginTop: spacing.md, marginBottom: spacing.xxl, padding: 16, alignItems: 'center', borderWidth: 1, borderColor: colors.danger, borderRadius: borderRadius.button, minHeight: 48, justifyContent: 'center' },
 });

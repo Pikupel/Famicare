@@ -16,10 +16,7 @@ router.post('/register', async (req, res) => {
   }
   const user = { id: uuid(), phone, name, role, createdAt: new Date().toISOString() };
   db.data.users.push(user);
-  if (role === 'caregiver') {
-    const profile = { id: uuid(), caregiverId: user.id, name: 'Aile Üyesi', birthDate: '', relationship: 'aile', phone: '', isActive: true, createdAt: new Date().toISOString() };
-    db.data.profiles.push(profile);
-  }
+  // Profile will be created manually by caregiver via add-profile screen
   await db.write();
   const token = generateToken(user);
   res.status(201).json({ user: { id: user.id, name: user.name, role: user.role, phone: user.phone }, token });

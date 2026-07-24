@@ -23,7 +23,7 @@ export function DrugSearch({ onSelect, placeholder }: DrugSearchProps) {
   const [results, setResults] = useState<DrugResult[]>([]);
   const [loading, setLoading] = useState(false);
   const [selected, setSelected] = useState<DrugResult | null>(null);
-  const timer = useRef<NodeJS.Timeout>();
+  const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const search = async (q: string) => {
     setQuery(q);

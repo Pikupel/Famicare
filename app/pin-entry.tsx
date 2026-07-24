@@ -14,7 +14,7 @@ export default function PinEntryScreen() {
   const [savedPin, setSavedPin] = useState('');
 
   useEffect(() => {
-    AsyncStorage.getItem('famicare_pin').then(setSavedPin);
+    AsyncStorage.getItem('famicare_pin').then(pin => { if (pin) setSavedPin(pin); });
   }, []);
 
   const handleDigit = (d: string) => {

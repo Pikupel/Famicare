@@ -64,7 +64,7 @@ export async function scheduleMedicationReminder(medId: string, name: string, ti
         priority: Notifications.AndroidNotificationPriority.HIGH,
         data: { medicationId: medId, type: 'medication_reminder' },
       },
-      trigger: { type: 'date', date: trigger },
+      trigger: { date: trigger, type: 'date' } as any,
     });
 
     const r10 = new Date(trigger.getTime() + 600000);
@@ -72,12 +72,12 @@ export async function scheduleMedicationReminder(medId: string, name: string, ti
     await Notifications.scheduleNotificationAsync({
       identifier: medId + '_10',
       content: { title: '⚠️ İlaç Hatırlatma', body: `${name} ilacınızı almadınız.`, sound: 'default', priority: Notifications.AndroidNotificationPriority.HIGH, data: { medicationId: medId, type: 'missed_dose', escalation: 1 } },
-      trigger: { type: 'date', date: r10 },
+      trigger: { date: r10, type: 'date' } as any,
     });
     await Notifications.scheduleNotificationAsync({
       identifier: medId + '_30',
       content: { title: '🔴 İlaç Alınmadı', body: `${name} ilacınızı almayı unuttunuz!`, sound: 'default', priority: Notifications.AndroidNotificationPriority.MAX, data: { medicationId: medId, type: 'missed_dose', escalation: 2 } },
-      trigger: { type: 'date', date: r30 },
+      trigger: { date: r30, type: 'date' } as any,
     });
   } catch {}
 }
