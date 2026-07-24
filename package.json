@@ -27,8 +27,7 @@
     "typescript": "~5.9.2"
   },
   "scripts": {
-    "start": "node api/src/index.js",
-    "expo": "expo start",
+    "start": "expo start",
     "android": "expo start --android",
     "ios": "expo start --ios",
     "web": "expo start --web"
