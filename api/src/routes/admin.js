@@ -76,4 +76,13 @@ router.post('/match-rxnav', async (req, res) => {
   res.json({ matched, failed, remaining: drugs.length - matched - failed });
 });
 
+// Delete a profile by ID
+router.delete('/profiles/:id', async (req, res) => {
+  const profile = db.data.profiles.find(p => p.id === req.params.id);
+  if (!profile) return res.status(404).json({ error: 'Profil bulunamadı' });
+  db.data.profiles = db.data.profiles.filter(p => p.id !== req.params.id);
+  await db.write();
+  res.json({ success: true, deletedName: profile.name });
+});
+
 export default router;
