@@ -50,14 +50,20 @@ export default function NotificationsScreen() {
             const map: Record<number, string[]> = { 1: ['medication', 'missed'], 2: ['appointment'], 3: ['system'] };
             return map[tab]?.some(k => n.type?.includes(k));
           }).map((n: any) => (
-            <View key={n.id} style={[styles.notif, { backgroundColor: (colorMap[n.type] || colors.gray) + '12' }]}>
+            <TouchableOpacity key={n.id} style={[styles.notif, { backgroundColor: (colorMap[n.type] || colors.gray) + '12' }]}
+              onPress={() => {
+                if (n.type === 'medication_reminder' || n.type === 'missed_dose') {
+                  router.push({ pathname: '/confirm-medication', params: { id: n.data?.medicationId || '', name: n.title?.replace('💊 ','').replace('⚠️ ','') || '', time: n.body?.split(' - ')[1] || '' } });
+                }
+              }}
+            >
               <View style={[styles.dot, { backgroundColor: colorMap[n.type] || colors.gray }]} />
               <View style={{ flex: 1 }}>
                 <Text style={{ ...typography.body, color: colors.text }}>{n.title}</Text>
                 {n.body ? <Text style={{ ...typography.caption, color: colors.textSecondary, marginTop: 2 }}>{n.body}</Text> : null}
               </View>
               <Text style={{ ...typography.small, color: colors.textLight, marginLeft: spacing.sm }}>{n.createdAt ? new Date(n.createdAt).toLocaleDateString('tr-TR') : ''}</Text>
-            </View>
+            </TouchableOpacity>
           ))}
         </ScrollView>
       )}
