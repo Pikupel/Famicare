@@ -89,9 +89,14 @@ export default function ProfileScreen() {
               <Text style={{ ...typography.body, color: colors.text, flex: 1 }}>Randevular</Text>
               <Text style={{ fontSize: 20, color: colors.textLight }}>›</Text>
             </TouchableOpacity>
-            <TouchableOpacity style={[styles.action, { borderBottomWidth: 0 }]} onPress={() => router.push({ pathname: '/health', params: { profileId: String(params.profileId || '') } })}>
+            <TouchableOpacity style={styles.action} onPress={() => router.push({ pathname: '/health', params: { profileId: String(params.profileId || '') } })}>
               <Text style={{ fontSize: 18, marginRight: spacing.md }}>❤️</Text>
               <Text style={{ ...typography.body, color: colors.text, flex: 1 }}>Sağlık Günlüğü</Text>
+              <Text style={{ fontSize: 20, color: colors.textLight }}>›</Text>
+            </TouchableOpacity>
+            <TouchableOpacity style={[styles.action, { borderBottomWidth: 0 }]} onPress={() => router.push({ pathname: '/reports', params: { profileName: String(params.name || '') } })}>
+              <Text style={{ fontSize: 18, marginRight: spacing.md }}>📊</Text>
+              <Text style={{ ...typography.body, color: colors.text, flex: 1 }}>Uyum Raporu</Text>
               <Text style={{ fontSize: 20, color: colors.textLight }}>›</Text>
             </TouchableOpacity>
           </View>

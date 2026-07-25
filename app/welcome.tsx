@@ -6,12 +6,12 @@ import { spacing, borderRadius } from '../src/theme/spacing';
 import { useAuthStore } from '../src/stores/useAuthStore';
 
 const PROFILES = [
-  { id: 'self', icon: '👤', label: 'Kendim', desc: 'Kendi sağlığımı takip et', role: 'elderly', color: colors.primary },
-  { id: 'child', icon: '👶', label: 'Çocuğum', desc: 'Çocuğumun ilaçlarını yönet', role: 'caregiver', color: colors.secondary },
-  { id: 'mother', icon: '👩', label: 'Annem', desc: 'Annemin sağlığını takip et', role: 'caregiver', color: colors.tertiary },
-  { id: 'father', icon: '👨', label: 'Babam', desc: 'Babamın ilaçlarını yönet', role: 'caregiver', color: colors.primaryLight },
-  { id: 'spouse', icon: '💑', label: 'Eşim', desc: 'Eşimin tedavisini yönet', role: 'caregiver', color: colors.secondaryContainer },
-  { id: 'other', icon: '👥', label: 'Yakınım', desc: 'Bir yakınım için kurulum', role: 'caregiver', color: colors.surfaceVariant },
+  { id: 'self', icon: '🙋', label: 'Kendim', desc: 'Kendi sağlığımı takip et', role: 'elderly', color: colors.primary },
+  { id: 'child', icon: '🧒', label: 'Çocuğum', desc: 'Çocuğumun ilaçlarını yönet', role: 'caregiver', color: colors.secondary },
+  { id: 'mother', icon: '👩‍🦳', label: 'Annem', desc: 'Annemin sağlığını takip et', role: 'caregiver', color: colors.tertiary },
+  { id: 'father', icon: '👨‍🦳', label: 'Babam', desc: 'Babamın ilaçlarını yönet', role: 'caregiver', color: colors.primaryLight },
+  { id: 'spouse', icon: '💕', label: 'Eşim', desc: 'Eşimin tedavisini yönet', role: 'caregiver', color: colors.secondaryContainer },
+  { id: 'other', icon: '🤝', label: 'Yakınım', desc: 'Bir yakınım için kurulum', role: 'caregiver', color: colors.surfaceVariant },
 ];
 
 export default function WelcomeScreen() {

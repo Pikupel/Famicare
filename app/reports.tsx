@@ -1,6 +1,6 @@
 import { useState, useCallback } from 'react';
 import { View, Text, TouchableOpacity, StyleSheet, ScrollView, ActivityIndicator, Alert } from 'react-native';
-import { useRouter, useFocusEffect } from 'expo-router';
+import { useRouter, useFocusEffect, useLocalSearchParams } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { colors } from '../src/theme/colors';
 import { typography } from '../src/theme/typography';
@@ -14,9 +14,11 @@ const WEEK_DATA = [85, 92, 100, 88, 94, 80, 75];
 
 export default function ReportsScreen() {
   const router = useRouter();
+  const params = useLocalSearchParams();
   const insets = useSafeAreaInsets();
   const userId = useAuthStore((s) => s.userId);
   const userName = useAuthStore((s) => s.userName);
+  const profileName = String(params.profileName || userName || 'Kullanıcı');
   const [logs, setLogs] = useState<any[]>([]);
   const [medications, setMedications] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
@@ -48,7 +50,7 @@ export default function ReportsScreen() {
       <View style={{ paddingTop: 56, paddingHorizontal: spacing.lg, paddingBottom: spacing.md, backgroundColor: colors.surface }}>
         <TouchableOpacity onPress={() => router.back()} style={{ minHeight: 48, justifyContent: 'center' }}><Text style={{ fontSize: 28, color: colors.text }}>←</Text></TouchableOpacity>
         <Text style={{ ...typography.h2, color: colors.text, marginTop: spacing.sm }}>Raporlar</Text>
-        <Text style={{ ...typography.caption, color: colors.textSecondary }}>{userName || 'Kullanıcı'} için uyum raporu</Text>
+        <Text style={{ ...typography.caption, color: colors.textSecondary }}>{profileName} için uyum raporu</Text>
       </View>
 
       <ScrollView style={{ flex: 1, padding: spacing.lg }} showsVerticalScrollIndicator={false}>
@@ -88,7 +90,7 @@ export default function ReportsScreen() {
           </View>
         </View>
 
-        <Button title={`📄 ${userName || 'Kullanıcı'} - Uyum Raporu (PDF)`} variant="outline" onPress={() => Alert.alert('PDF Raporu', 'PDF çıktı özelliği yakında eklenecek. Verileriniz hazır.')} style={{ marginBottom: spacing.xxl }} />
+        <Button title={`📄 ${profileName} - Uyum Raporu (PDF)`} variant="outline" onPress={() => Alert.alert('PDF Raporu', `${profileName} için PDF rapor özelliği yakında eklenecek.`) } style={{ marginBottom: spacing.xxl }} />
       </ScrollView>
     </View>
   );
