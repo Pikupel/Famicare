@@ -17,8 +17,8 @@ export default function LoginScreen() {
   const isExisting = params.existing === '1';
   const [phone, setPhone] = useState('');
   const [name, setName] = useState('');
-  const [step, setStep] = useState<'phone' | 'name_pin'>('phone');
   const [pin, setPin] = useState('');
+  const [step, setStep] = useState<'phone' | 'name_pin'>('phone');
   const [loading, setLoading] = useState(false);
 
   const handlePhoneSubmit = () => {
@@ -27,37 +27,47 @@ export default function LoginScreen() {
   };
 
   const handleLogin = async () => {
-    if (isExisting) {
-      if (pin.length < 4) { Alert.alert('Uyarı', 'PIN girin'); return; }
-      setLoading(true);
-      try {
-        const res = await api.post<{ user: { id: string; name: string; role: string }; token: string }>('/auth/login', { phone: phone.trim(), role: undefined });
+    if (pin.length < 4) { Alert.alert('Uyarı', 'PIN girin'); return; }
+    if (!isExisting && !name.trim()) { Alert.alert('Uyarı', 'Adınızı girin'); return; }
+    setLoading(true);
+
+    try {
+      if (isExisting) {
+        // Existing user login
+        const res = await api.post<{ user: { id: string; name: string; role: string }; token: string }>('/auth/login', { phone: phone.trim() });
+        // Verify PIN
+        const savedPin = await AsyncStorage.getItem('famicare_pin_' + res.user.id);
+        if (!savedPin) {
+          Alert.alert('Hata', 'Bu cihazda PIN kaydı bulunamadı. Lütfen kayıtlı cihazdan giriş yapın.');
+          setLoading(false); return;
+        }
+        if (pin !== savedPin) {
+          Alert.alert('Hata', 'PIN hatalı');
+          setLoading(false); return;
+        }
         login(res.user.name, res.token, res.user.id, res.user.role as any);
-        await AsyncStorage.setItem('famicare_pin', pin);
         await AsyncStorage.setItem('famicare_session', 'true');
         router.replace(res.user.role === 'caregiver' ? '/caregiver' : '/home');
-      } catch (e: any) { Alert.alert('Hata', e.message || 'Giriş yapılamadı'); }
-      finally { setLoading(false); }
-      return;
-    }
-
-    if (!name.trim()) { Alert.alert('Uyarı', 'Adınızı girin'); return; }
-    if (pin.length < 4) { Alert.alert('Uyarı', 'PIN girin'); return; }
-    setLoading(true);
-    try {
-      const res = await api.post<{ user: { id: string; name: string }; token: string }>('/auth/register', {
-        phone: phone.trim(), name: name.trim(), role,
-      });
-      login(res.user.name, res.token, res.user.id, role!);
-      await AsyncStorage.setItem('famicare_pin', pin);
-      await AsyncStorage.setItem('famicare_session', 'true');
-      router.replace(role === 'caregiver' ? '/caregiver' : '/home');
+      } else {
+        // New registration
+        const res = await api.post<{ user: { id: string; name: string }; token: string }>('/auth/register', {
+          phone: phone.trim(), name: name.trim(), role,
+        });
+        login(res.user.name, res.token, res.user.id, role!);
+        await AsyncStorage.setItem('famicare_pin_' + res.user.id, pin);
+        await AsyncStorage.setItem('famicare_session', 'true');
+        router.replace(role === 'caregiver' ? '/caregiver' : '/home');
+      }
     } catch (err: any) {
-      if (err?.message?.includes('zaten kayıtlı')) {
+      if (!isExisting && err?.message?.includes('zaten kayıtlı')) {
         try {
           const res = await api.post<{ user: { id: string; name: string }; token: string }>('/auth/login', { phone: phone.trim(), role });
+          const savedPin = await AsyncStorage.getItem('famicare_pin_' + res.user.id);
+          if (savedPin && pin !== savedPin) {
+            Alert.alert('Hata', 'PIN hatalı'); setLoading(false); return;
+          }
           login(res.user.name, res.token, res.user.id, role!);
-          await AsyncStorage.setItem('famicare_pin', pin);
+          await AsyncStorage.setItem('famicare_pin_' + res.user.id, pin);
           await AsyncStorage.setItem('famicare_session', 'true');
           router.replace(role === 'caregiver' ? '/caregiver' : '/home');
         } catch { Alert.alert('Hata', 'Giriş yapılamadı'); }
@@ -80,7 +90,7 @@ export default function LoginScreen() {
       {step === 'phone' ? (
         <>
           <Text style={{ ...typography.body, color: colors.text, textAlign: 'center', marginBottom: spacing.lg }}>
-            {isExisting ? 'Kayıtlı telefon numaranızı girin' : 'Telefon numaranızı girin'}
+            {isExisting ? 'Telefon numaranızı girin' : 'Telefon numaranızı girin'}
           </Text>
           <TextInput style={styles.input} value={phone} onChangeText={setPhone} placeholder="+90 532 XXX XX XX" keyboardType="phone-pad" maxLength={15} autoFocus />
           <Button title="Devam" onPress={handlePhoneSubmit} disabled={phone.trim().length < 10} style={{ marginTop: spacing.md }} />
@@ -93,9 +103,11 @@ export default function LoginScreen() {
               <TextInput style={styles.input} value={name} onChangeText={setName} placeholder="Adınız Soyadınız" autoFocus />
             </>
           ) : null}
-          <Text style={{ ...typography.body, color: colors.text, textAlign: 'center', marginBottom: spacing.lg }}>{isExisting ? 'PIN Kodunuzu girin' : 'Bir PIN kodu belirleyin (4 haneli)'}</Text>
+          <Text style={{ ...typography.body, color: colors.text, textAlign: 'center', marginBottom: spacing.lg }}>
+            {isExisting ? 'PIN kodunuzu girin' : 'Bir PIN kodu belirleyin (4 haneli)'}
+          </Text>
           <TextInput style={[styles.input, { textAlign: 'center', fontSize: 24, letterSpacing: 8 }]} value={pin} onChangeText={(v) => setPin(v.replace(/[^0-9]/g, '').slice(0, 4))} placeholder="••••" keyboardType="number-pad" maxLength={4} secureTextEntry autoFocus />
-          <Button title={loading ? 'Giriş yapılıyor...' : 'Giriş Yap'} onPress={handleLogin} disabled={loading || pin.length < 4 || (!isExisting && !name.trim())} style={{ marginTop: spacing.md }} />
+          <Button title={loading ? 'Giriş yapılıyor...' : 'Giriş Yap'} onPress={handleLogin} disabled={loading || pin.length < 4} style={{ marginTop: spacing.md }} />
           <TouchableOpacity onPress={() => setStep('phone')} style={{ marginTop: spacing.md, minHeight: 44, justifyContent: 'center', alignItems: 'center' }}>
             <Text style={{ ...typography.body, color: colors.primary }}>← Geri</Text>
           </TouchableOpacity>

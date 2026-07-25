@@ -153,7 +153,7 @@ export default function ProfileScreen() {
             <TouchableOpacity style={styles.helpBtn} onPress={() => router.push('/help')}>
               <Text style={{ ...typography.button, color: colors.textLight }}>❓ Yardım</Text>
             </TouchableOpacity>
-            <TouchableOpacity style={styles.logoutBtn} onPress={() => { logout(); router.replace('/welcome'); }}>
+            <TouchableOpacity style={styles.logoutBtn} onPress={async () => { await AsyncStorage.removeItem('famicare_session'); logout(); router.replace('/welcome'); }}>
               <Text style={{ ...typography.button, color: colors.danger }}>Çıkış Yap</Text>
             </TouchableOpacity>
           </>
