@@ -81,12 +81,22 @@ router.get('/profiles', (req, res) => {
   res.json(db.data.profiles.map(p => ({ id: p.id, name: p.name, caregiverId: p.caregiverId, linkedUserId: p.linkedUserId, inviteCode: p.inviteCode })));
 });
 
-// Delete a user by ID
+// Delete a user by ID (cascade)
 router.delete('/users/:id', async (req, res) => {
   const user = db.data.users.find(u => u.id === req.params.id);
   if (!user) return res.status(404).json({ error: 'Kullanıcı bulunamadı' });
-  db.data.users = db.data.users.filter(u => u.id !== req.params.id);
-  db.data.notifications = db.data.notifications.filter(n => n.userId !== req.params.id);
+  const uid = req.params.id;
+  db.data.users = db.data.users.filter(u => u.id !== uid);
+  db.data.notifications = db.data.notifications.filter(n => n.userId !== uid);
+  // Also delete related profiles and their children
+  const userProfiles = db.data.profiles.filter(p => p.caregiverId === uid || p.linkedUserId === uid);
+  for (const p of userProfiles) {
+    db.data.medications = db.data.medications.filter(m => m.profileId !== p.id);
+    db.data.medicationLogs = db.data.medicationLogs.filter(l => l.profileId !== p.id);
+    db.data.appointments = db.data.appointments.filter(a => a.profileId !== p.id);
+    db.data.healthRecords = db.data.healthRecords.filter(r => r.profileId !== p.id);
+  }
+  db.data.profiles = db.data.profiles.filter(p => p.caregiverId !== uid && p.linkedUserId !== uid);
   await db.write();
   res.json({ success: true, deletedName: user.name });
 });
@@ -101,11 +111,16 @@ router.patch('/profiles/:id', async (req, res) => {
   res.json(db.data.profiles[idx]);
 });
 
-// Delete a profile by ID
+// Delete a profile by ID (cascade)
 router.delete('/profiles/:id', async (req, res) => {
   const profile = db.data.profiles.find(p => p.id === req.params.id);
   if (!profile) return res.status(404).json({ error: 'Profil bulunamadı' });
-  db.data.profiles = db.data.profiles.filter(p => p.id !== req.params.id);
+  const pid = req.params.id;
+  db.data.profiles = db.data.profiles.filter(p => p.id !== pid);
+  db.data.medications = db.data.medications.filter(m => m.profileId !== pid);
+  db.data.medicationLogs = db.data.medicationLogs.filter(l => l.profileId !== pid);
+  db.data.appointments = db.data.appointments.filter(a => a.profileId !== pid);
+  db.data.healthRecords = db.data.healthRecords.filter(r => r.profileId !== pid);
   await db.write();
   res.json({ success: true, deletedName: profile.name });
 });
