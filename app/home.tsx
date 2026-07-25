@@ -6,13 +6,14 @@ import { colors } from '../src/theme/colors';
 import { typography } from '../src/theme/typography';
 import { spacing, borderRadius, shadow } from '../src/theme/spacing';
 import * as Speech from 'expo-speech';
+import { setupNotifications, scheduleMedicationReminder, cancelAllReminders } from '../src/services/notifications';
 import { useAuthStore } from '../src/stores/useAuthStore';
 import { api } from '../src/services/api';
 import { EmptyState } from '../src/components/EmptyState';
 import { BottomNav } from '../src/components/BottomNav';
 import { SOSButton } from '../src/components/SOSButton';
 import { cacheData, getCachedData } from '../src/services/cache';
-import { setupNotifications, scheduleMedicationReminder, cancelAllReminders } from '../src/services/notifications';
+
 
 function isTimePassed(timeStr: string | undefined): boolean {
   if (!timeStr) return false;
@@ -34,8 +35,6 @@ export default function HomeScreen() {
   const userId = useAuthStore((s) => s.userId);
   const [medications, setMedications] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
-  const [confirmed, setConfirmed] = useState<string | null>(null);
-
   useFocusEffect(useCallback(() => {
     if (!userId) { setLoading(false); return; }
     (async () => {
@@ -73,26 +72,7 @@ export default function HomeScreen() {
     })();
   }, [userId]));
 
-  const [undoTimer, setUndoTimer] = useState<ReturnType<typeof setTimeout> | null>(null);
 
-  const take = async (id: string) => {
-    setConfirmed(id);
-    const timer = setTimeout(async () => {
-      try { await api.post(`/medications/${id}/log`, { status: 'taken', confirmedBy: 'elderly' }); } catch {}
-      setMedications(p => p.filter(m => m.id !== id));
-      setConfirmed(null);
-      setUndoTimer(null);
-    }, 5000);
-    setUndoTimer(timer);
-  };
-
-  const undo = () => {
-    if (undoTimer) clearTimeout(undoTimer);
-    setConfirmed(null);
-    setUndoTimer(null);
-  };
-
-  const nextMed = medications.length > 0 ? medications[0] : null;
 
   if (loading) return <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: colors.background }}>
     <ActivityIndicator size="large" color={colors.primary} />
@@ -137,10 +117,10 @@ export default function HomeScreen() {
             <>
               {medications.map((m: any) => (
                 <View key={m.id} style={[styles.medRow, confirmed === m.id && { backgroundColor: colors.secondary + '15', borderRadius: 12 }, isTimePassed(m.times?.[0]) && !confirmed && { borderLeftWidth: 3, borderLeftColor: colors.danger }]}>
-                  <TouchableOpacity style={{ width: 56, minHeight: 48, justifyContent: 'center' }} onPress={() => !confirmed && take(m.id)} accessibilityLabel={`${m.name} ilacını alındı olarak işaretle`} accessibilityRole="button">
-                    <Text style={{ ...typography.h2, fontSize: 20, color: isTimePassed(m.times?.[0]) && !confirmed ? colors.danger : colors.primary }}>{m.times?.[0] || '--'}</Text>
+                  <TouchableOpacity style={{ width: 56, minHeight: 48, justifyContent: 'center' }} onPress={() => router.push({ pathname: '/confirm-medication', params: { id: m.id, name: m.name, dosage: m.dosage, purpose: m.purpose || '', time: m.times?.[0] || '' } })}>
+                    <Text style={{ ...typography.h2, fontSize: 20, color: isTimePassed(m.times?.[0]) ? colors.danger : colors.primary }}>{m.times?.[0] || '--'}</Text>
                   </TouchableOpacity>
-                  <TouchableOpacity style={{ flex: 1, minHeight: 48, justifyContent: 'center' }} onPress={() => !confirmed && take(m.id)}>
+                  <TouchableOpacity style={{ flex: 1, minHeight: 48, justifyContent: 'center' }} onPress={() => router.push({ pathname: '/confirm-medication', params: { id: m.id, name: m.name, dosage: m.dosage, purpose: m.purpose || '', time: m.times?.[0] || '' } })}>
                     <Text style={{ ...typography.body, fontWeight: '500', color: colors.text }}>{m.name}</Text>
                     <Text style={{ ...typography.caption, color: colors.textSecondary }}>{m.dosage}</Text>
                     {m.purpose ? <Text style={{ ...typography.small, color: colors.textLight, fontStyle: 'italic', marginTop: 2 }}>{m.purpose}</Text> : null}
@@ -148,14 +128,8 @@ export default function HomeScreen() {
                   <TouchableOpacity style={{ minWidth: 44, minHeight: 48, alignItems: 'center', justifyContent: 'center' }} onPress={() => Speech.speak(`${m.name} ilacınızı almayı unutmayın`, { language: 'tr' })}>
                     <Text style={{ fontSize: 18 }}>🔊</Text>
                   </TouchableOpacity>
-                  <View style={{ marginLeft: spacing.xs }}>{confirmed === m.id ? <View style={styles.done}><Text style={{ color: '#FFF', fontSize: 16, fontWeight: '700' }}>✓</Text></View> : <TouchableOpacity style={{ minWidth: 44, minHeight: 48, alignItems: 'center', justifyContent: 'center' }} onPress={() => !confirmed && take(m.id)}><Text style={{ fontSize: 24, color: colors.textLight }}>›</Text></TouchableOpacity>}</View>
                 </View>
               ))}
-              {confirmed && (
-                <TouchableOpacity style={[styles.takeAllBtn, { backgroundColor: colors.warning }]} onPress={undo}>
-                  <Text style={{ ...typography.button, color: '#FFF' }}>↩  GERİ AL (5sn)</Text>
-                </TouchableOpacity>
-              )}
             </>
           )}
         </View>
@@ -172,6 +146,6 @@ const styles = StyleSheet.create({
   card: { backgroundColor: colors.surface, borderRadius: borderRadius.card, padding: 20, marginHorizontal: spacing.lg },
   medRow: { flexDirection: 'row', alignItems: 'center', paddingVertical: 14, borderBottomWidth: 1, borderBottomColor: colors.border },
   done: { width: 32, height: 32, borderRadius: 16, backgroundColor: colors.secondary, alignItems: 'center', justifyContent: 'center' },
-  takeAllBtn: { marginTop: spacing.lg, height: 56, borderRadius: 16, backgroundColor: colors.secondary, alignItems: 'center', justifyContent: 'center', shadowColor: colors.secondary, shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.25, shadowRadius: 8, elevation: 4 },
+
 
 });

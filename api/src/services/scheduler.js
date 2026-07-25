@@ -34,19 +34,33 @@ async function checkMissedDoses() {
     const minutesSince = currentMinutes - medMinutes;
     if (minutesSince < 30 || minutesSince > 90) continue;
 
-    // Check if already taken today
+    // Check if already resolved today (taken, caregiver_marked, or caregiver override)
     const today = now.toISOString().split('T')[0];
-    const alreadyTaken = db.data.medicationLogs.some(
-      l => l.medicationId === medication.id && l.date === today && l.status === 'taken'
+    const todayLog = db.data.medicationLogs.find(
+      l => l.medicationId === medication.id && l.date === today
     );
-    if (alreadyTaken) continue;
+    if (todayLog && (todayLog.status === 'taken' || todayLog.status === 'caregiver_marked')) continue;
 
-    // Check if we already sent a notification for this medication + time today
+    // For postponed doses, use shorter interval
+    const escalationMinutes = todayLog?.status === 'postponed' ? 60 : 30;
+    if (minutesSince < escalationMinutes) continue;
+
+    // Check if already notified for this time
     const timeLabel = medication.times[0];
     const alreadyNotified = db.data.notifications.some(
       n => n.type === 'missed_dose' && n.body?.includes(medication.name) && n.body?.includes(timeLabel) && n.createdAt?.startsWith(today)
     );
     if (alreadyNotified) continue;
+
+    // Auto-create unresponded log if none exists
+    if (!todayLog) {
+      db.data.medicationLogs.push({
+        id: uuid(), medicationId: medication.id, profileId: medication.profileId,
+        scheduledTime: medication.times[0], date: today, status: 'unresponded',
+        takenAt: now.toISOString(), confirmedBy: 'system',
+        changedBy: 'system',
+      });
+    }
 
     console.log(`⚠️ Kaçırılan doz: ${medication.name} (${profile.name})`);
 

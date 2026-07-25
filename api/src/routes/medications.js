@@ -29,20 +29,56 @@ router.post('/', async (req, res) => {
   res.status(201).json(medication);
 });
 
+const VALID_STATUSES = ['taken', 'postponed', 'unresponded', 'caregiver_marked'];
+
 router.post('/:id/log', async (req, res) => {
-  const { status, confirmedBy } = req.body;
+  const { status, confirmedBy, caregiverOverride } = req.body;
   const medication = db.data.medications.find(m => m.id === req.params.id);
   if (!medication) return res.status(404).json({ error: 'İlaç bulunamadı' });
   const now = new Date();
-  const log = {
+  const today = now.toISOString().split('T')[0];
+
+  // Check for existing log today
+  const existingIdx = db.data.medicationLogs.findIndex(
+    l => l.medicationId === req.params.id && l.date === today
+  );
+
+  const finalStatus = status || 'unresponded';
+  if (!VALID_STATUSES.includes(finalStatus)) {
+    return res.status(400).json({ error: `Geçersiz durum: ${finalStatus}` });
+  }
+
+  // Conflict rule: caregiver_marked always overrides
+  if (existingIdx >= 0 && db.data.medicationLogs[existingIdx].status === 'caregiver_marked' && finalStatus !== 'caregiver_marked') {
+    return res.status(403).json({ error: 'Bakıcı tarafından işaretlenmiş, değiştirilemez' });
+  }
+
+  const logEntry = {
     id: uuid(), medicationId: medication.id, profileId: medication.profileId,
-    scheduledTime: now.toTimeString().slice(0, 5), date: now.toISOString().split('T')[0],
-    status: status || 'taken', takenAt: now.toISOString(),
-    confirmedBy: confirmedBy || 'elderly',
+    scheduledTime: medication.times?.[0] || now.toTimeString().slice(0, 5),
+    date: today, status: finalStatus,
+    takenAt: now.toISOString(), confirmedBy: caregiverOverride ? 'caregiver' : (confirmedBy || 'elderly'),
+    changedBy: caregiverOverride ? 'caregiver' : (confirmedBy || 'elderly'),
   };
-  db.data.medicationLogs.push(log);
+
+  if (existingIdx >= 0) {
+    db.data.medicationLogs[existingIdx] = { ...db.data.medicationLogs[existingIdx], ...logEntry, id: db.data.medicationLogs[existingIdx].id };
+  } else {
+    db.data.medicationLogs.push(logEntry);
+  }
+
   await db.write();
-  res.status(201).json(log);
+  res.status(201).json(logEntry);
+});
+
+// Caregiver override: get pending logs for review
+router.get('/profile/:profileId/pending', (req, res) => {
+  const today = new Date().toISOString().split('T')[0];
+  const logs = db.data.medicationLogs.filter(
+    l => l.profileId === req.params.profileId && l.date === today && l.status === 'unresponded'
+  );
+  const meds = db.data.medications.filter(m => m.profileId === req.params.profileId);
+  res.json(logs.map(l => ({ ...l, medication: meds.find(m => m.id === l.medicationId) })));
 });
 
 router.get('/profile/:profileId/logs', (req, res) => {
