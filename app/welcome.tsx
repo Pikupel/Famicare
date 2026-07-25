@@ -27,9 +27,7 @@ export default function WelcomeScreen() {
   useEffect(() => {
     if (!hydrated) return;
     if (isLoggedIn && role) {
-      AsyncStorage.getItem('famicare_pin').then(pin => {
-        router.replace(pin ? '/pin-entry' : (role === 'caregiver' ? '/caregiver' : '/home'));
-      }).catch(() => router.replace(role === 'caregiver' ? '/caregiver' : '/home'));
+      router.replace(role === 'caregiver' ? '/caregiver' : '/home');
     } else {
       setChecking(false);
     }
@@ -64,9 +62,10 @@ export default function WelcomeScreen() {
         ))}
       </View>
 
-      <Text style={{ ...typography.small, color: colors.textLight, textAlign: 'center', marginTop: spacing.xl }}>
-        Seçiminiz daha sonra değiştirilebilir.
-      </Text>
+      <TouchableOpacity style={{ marginTop: spacing.xl, alignItems: 'center', minHeight: 48, justifyContent: 'center' }} onPress={() => { setRole('existing'); router.push('/login'); }}>
+        <Text style={{ ...typography.body, color: colors.primary, fontWeight: '600' }}>🔑 Zaten kayıtlıyım</Text>
+        <Text style={{ ...typography.small, color: colors.textLight, marginTop: 2 }}>Telefon + PIN ile giriş yap</Text>
+      </TouchableOpacity>
     </ScrollView>
   );
 }
