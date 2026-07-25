@@ -116,7 +116,7 @@ export default function HomeScreen() {
           ) : (
             <>
               {medications.map((m: any) => (
-                <View key={m.id} style={[styles.medRow, confirmed === m.id && { backgroundColor: colors.secondary + '15', borderRadius: 12 }, isTimePassed(m.times?.[0]) && !confirmed && { borderLeftWidth: 3, borderLeftColor: colors.danger }]}>
+                <View key={m.id} style={[styles.medRow, isTimePassed(m.times?.[0]) && { borderLeftWidth: 3, borderLeftColor: colors.danger }]}>
                   <TouchableOpacity style={{ width: 56, minHeight: 48, justifyContent: 'center' }} onPress={() => router.push({ pathname: '/confirm-medication', params: { id: m.id, name: m.name, dosage: m.dosage, purpose: m.purpose || '', time: m.times?.[0] || '' } })}>
                     <Text style={{ ...typography.h2, fontSize: 20, color: isTimePassed(m.times?.[0]) ? colors.danger : colors.primary }}>{m.times?.[0] || '--'}</Text>
                   </TouchableOpacity>

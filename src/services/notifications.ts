@@ -2,11 +2,8 @@ import { Platform } from 'react-native';
 import { api } from './api';
 
 async function getNotifications() {
-  try {
-    return await import('expo-notifications');
-  } catch {
-    return null;
-  }
+  try { return await import('expo-notifications'); }
+  catch { return null; }
 }
 
 export async function setupNotifications() {
@@ -20,15 +17,17 @@ export async function setupNotifications() {
     if (Platform.OS === 'android') {
       await Notifications.setNotificationChannelAsync('medication', {
         name: 'İlaç Hatırlatma',
-        importance: Notifications.AndroidImportance.HIGH,
+        importance: Notifications.AndroidImportance.MAX,
         sound: 'default',
         vibrationPattern: [0, 500, 200, 500],
+        lightColor: '#00685F',
       });
       await Notifications.setNotificationChannelAsync('missed_dose', {
         name: 'Kaçırılan Doz',
-        importance: Notifications.AndroidImportance.HIGH,
+        importance: Notifications.AndroidImportance.MAX,
         sound: 'default',
         vibrationPattern: [0, 1000, 500, 1000],
+        lightColor: '#BA1A1A',
       });
     }
 
@@ -54,14 +53,22 @@ export async function scheduleMedicationReminder(medId: string, name: string, ti
   const trigger = new Date(now.getFullYear(), now.getMonth(), now.getDate(), h, m, 0);
   if (trigger <= now) trigger.setDate(trigger.getDate() + 1);
 
+  const baseContent = {
+    sound: 'default',
+    priority: Notifications.AndroidNotificationPriority.MAX,
+    shouldPlaySound: true,
+    shouldShowAlert: true,
+    shouldShowBanner: true,
+    shouldShowList: true,
+  };
+
   try {
     await Notifications.scheduleNotificationAsync({
       identifier: medId,
       content: {
+        ...baseContent,
         title: '💊 İlaç Zamanı',
         body: `${name} - ${timeString}`,
-        sound: 'default',
-        priority: Notifications.AndroidNotificationPriority.HIGH,
         data: { medicationId: medId, type: 'medication_reminder' },
       },
       trigger: { date: trigger, type: 'date' } as any,
@@ -71,12 +78,22 @@ export async function scheduleMedicationReminder(medId: string, name: string, ti
     const r30 = new Date(trigger.getTime() + 1800000);
     await Notifications.scheduleNotificationAsync({
       identifier: medId + '_10',
-      content: { title: '⚠️ İlaç Hatırlatma', body: `${name} ilacınızı almadınız.`, sound: 'default', priority: Notifications.AndroidNotificationPriority.HIGH, data: { medicationId: medId, type: 'missed_dose', escalation: 1 } },
+      content: {
+        ...baseContent,
+        title: '⚠️ İlaç Hatırlatma',
+        body: `${name} ilacınızı almadınız.`,
+        data: { medicationId: medId, type: 'missed_dose', escalation: 1 },
+      },
       trigger: { date: r10, type: 'date' } as any,
     });
     await Notifications.scheduleNotificationAsync({
       identifier: medId + '_30',
-      content: { title: '🔴 İlaç Alınmadı', body: `${name} ilacınızı almayı unuttunuz!`, sound: 'default', priority: Notifications.AndroidNotificationPriority.MAX, data: { medicationId: medId, type: 'missed_dose', escalation: 2 } },
+      content: {
+        ...baseContent,
+        title: '🔴 İlaç Alınmadı',
+        body: `${name} ilacınızı almayı unuttunuz!`,
+        data: { medicationId: medId, type: 'missed_dose', escalation: 2 },
+      },
       trigger: { date: r30, type: 'date' } as any,
     });
   } catch {}
