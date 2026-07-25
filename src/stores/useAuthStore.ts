@@ -2,7 +2,7 @@ import { create } from 'zustand';
 import { persist, createJSONStorage } from 'zustand/middleware';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
-type Role = 'caregiver' | 'elderly' | 'existing' | null;
+type Role = 'caregiver' | 'elderly' | null;
 
 interface AuthState {
   role: Role;

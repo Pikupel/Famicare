@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { View, Text, TextInput, TouchableOpacity, StyleSheet, KeyboardAvoidingView, Platform, Alert, ScrollView } from 'react-native';
-import { useRouter } from 'expo-router';
+import { useRouter, useLocalSearchParams } from 'expo-router';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { colors } from '../src/theme/colors';
 import { typography } from '../src/theme/typography';
@@ -11,9 +11,10 @@ import { api } from '../src/services/api';
 
 export default function LoginScreen() {
   const router = useRouter();
+  const params = useLocalSearchParams();
   const role = useAuthStore((s) => s.role);
   const login = useAuthStore((s) => s.login);
-  const isExisting = role === 'existing';
+  const isExisting = params.existing === '1';
   const [phone, setPhone] = useState('');
   const [name, setName] = useState('');
   const [step, setStep] = useState<'phone' | 'name_pin'>('phone');

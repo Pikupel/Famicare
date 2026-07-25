@@ -28,7 +28,7 @@ export default function OnboardingScreen() {
     setTimeout(() => {
       const currentRole = useAuthStore.getState().role;
       const currentLogin = useAuthStore.getState().isLoggedIn;
-      if (currentLogin && currentRole && currentRole !== 'existing') {
+      if (currentLogin && currentRole) {
         router.replace(currentRole === 'caregiver' ? '/caregiver' : '/home');
       } else {
         setChecked(true);

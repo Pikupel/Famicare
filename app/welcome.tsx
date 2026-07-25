@@ -7,12 +7,12 @@ import { spacing, borderRadius } from '../src/theme/spacing';
 import { useAuthStore } from '../src/stores/useAuthStore';
 
 const PROFILES = [
-  { id: 'self', icon: '🙋', label: 'Kendim', desc: 'Kendi sağlığımı takip et', role: 'elderly', color: colors.primary },
-  { id: 'child', icon: '🧒', label: 'Çocuğum', desc: 'Çocuğumun ilaçlarını yönet', role: 'caregiver', color: colors.secondary },
-  { id: 'mother', icon: '👩‍🦳', label: 'Annem', desc: 'Annemin sağlığını takip et', role: 'caregiver', color: colors.tertiary },
-  { id: 'father', icon: '👨‍🦳', label: 'Babam', desc: 'Babamın ilaçlarını yönet', role: 'caregiver', color: colors.primaryLight },
-  { id: 'spouse', icon: '💕', label: 'Eşim', desc: 'Eşimin tedavisini yönet', role: 'caregiver', color: colors.secondaryContainer },
-  { id: 'other', icon: '🤝', label: 'Yakınım', desc: 'Bir yakınım için kurulum', role: 'caregiver', color: colors.surfaceVariant },
+  { id: 'self', icon: '🙋', label: 'Kendim', desc: 'Kendi sağlığımı takip et', role: 'elderly' as const, color: colors.primary },
+  { id: 'child', icon: '🧒', label: 'Çocuğum', desc: 'Çocuğumun ilaçlarını yönet', role: 'caregiver' as const, color: colors.secondary },
+  { id: 'mother', icon: '👩‍🦳', label: 'Annem', desc: 'Annemin sağlığını takip et', role: 'caregiver' as const, color: colors.tertiary },
+  { id: 'father', icon: '👨‍🦳', label: 'Babam', desc: 'Babamın ilaçlarını yönet', role: 'caregiver' as const, color: colors.primaryLight },
+  { id: 'spouse', icon: '💕', label: 'Eşim', desc: 'Eşimin tedavisini yönet', role: 'caregiver' as const, color: colors.secondaryContainer },
+  { id: 'other', icon: '🤝', label: 'Yakınım', desc: 'Bir yakınım için kurulum', role: 'caregiver' as const, color: colors.surfaceVariant },
 ];
 
 export default function WelcomeScreen() {
@@ -23,7 +23,7 @@ export default function WelcomeScreen() {
   useEffect(() => {
     setTimeout(() => {
       const s = useAuthStore.getState();
-      if (s.isLoggedIn && s.role && s.role !== 'existing') {
+      if (s.isLoggedIn && s.role) {
         router.replace(s.role === 'caregiver' ? '/caregiver' : '/home');
       } else {
         setReady(true);
@@ -44,7 +44,7 @@ export default function WelcomeScreen() {
 
       <View style={{ flexDirection: 'row', flexWrap: 'wrap', paddingHorizontal: spacing.md, gap: spacing.sm }}>
         {PROFILES.map((p) => (
-          <TouchableOpacity key={p.id} style={[styles.card, { borderColor: p.color + '40' }]} onPress={() => { setRole(p.role as 'caregiver' | 'elderly'); router.push('/login'); }}>
+          <TouchableOpacity key={p.id} style={[styles.card, { borderColor: p.color + '40' }]}             onPress={() => { setRole(p.role); router.push('/login'); }}>
             <Text style={{ fontSize: 36, marginBottom: spacing.sm }}>{p.icon}</Text>
             <Text style={{ ...typography.body, fontWeight: '600', color: colors.text, textAlign: 'center' }}>{p.label}</Text>
             <Text style={{ ...typography.small, color: colors.textLight, textAlign: 'center', marginTop: 4 }}>{p.desc}</Text>
@@ -52,7 +52,7 @@ export default function WelcomeScreen() {
         ))}
       </View>
 
-      <TouchableOpacity style={{ marginTop: spacing.xl, alignItems: 'center', minHeight: 48, justifyContent: 'center' }} onPress={() => { setRole('existing'); router.push('/login'); }}>
+      <TouchableOpacity style={{ marginTop: spacing.xl, alignItems: 'center', minHeight: 48, justifyContent: 'center' }} onPress={() => { router.push('/login?existing=1'); }}>
         <Text style={{ ...typography.body, color: colors.primary, fontWeight: '600' }}>🔑 Zaten kayıtlıyım</Text>
         <Text style={{ ...typography.small, color: colors.textLight, marginTop: 2 }}>Telefon + PIN ile giriş yap</Text>
       </TouchableOpacity>
