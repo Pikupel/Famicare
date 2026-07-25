@@ -24,10 +24,13 @@ export default function ProfileScreen() {
   const [avatarEmoji, setAvatarEmoji] = useState('👤');
   const homeRoute = role === 'caregiver' ? '/caregiver' : '/home';
 
+  const [bloodType, setBloodType] = useState('A Rh+');
+
   useEffect(() => {
     AsyncStorage.getItem('famicare_avatar').then(a => {
       if (a && AVATAR_EMOJI[a]) setAvatarEmoji(AVATAR_EMOJI[a]);
     });
+    AsyncStorage.getItem('famicare_bloodtype').then(b => { if (b) setBloodType(b); });
   }, []);
   const NAV = role === 'caregiver' ? [
     { label: 'Ana Sayfa', icon: '⌂', route: '/caregiver' },
@@ -110,7 +113,7 @@ export default function ProfileScreen() {
             <View style={[styles.section, shadow.card]}>
               <Text style={{ ...typography.h3, color: colors.text, marginBottom: spacing.sm }}>Vital Bulgular</Text>
               <View style={{ flexDirection: 'row', gap: spacing.sm }}>
-                {[{ icon: '🩸', label: 'Kan Grubu', value: 'A Rh+' }, { icon: '📏', label: 'Boy', value: '178 cm' }, { icon: '⚖️', label: 'Kilo', value: '82 kg' }].map((v, i) => (
+                {[{ icon: '🩸', label: 'Kan Grubu', value: bloodType }, { icon: '📏', label: 'Boy', value: '178 cm' }, { icon: '⚖️', label: 'Kilo', value: '82 kg' }].map((v, i) => (
                   <View key={i} style={{ flex: 1, alignItems: 'center', padding: 12, backgroundColor: colors.surfaceVariant + '40', borderRadius: 12 }}>
                     <Text style={{ fontSize: 22, marginBottom: 4 }}>{v.icon}</Text>
                     <Text style={{ ...typography.h3, color: colors.text }}>{v.value}</Text>

@@ -25,6 +25,7 @@ export default function EditProfileScreen() {
   const role = useAuthStore((s) => s.role);
   const [name, setName] = useState(userName);
   const [avatar, setAvatar] = useState('');
+  const [bloodType, setBloodType] = useState('');
   const [saving, setSaving] = useState(false);
 
   const save = async () => {
@@ -33,6 +34,7 @@ export default function EditProfileScreen() {
     try {
       await api.patch('/me', { name: name.trim() });
       if (avatar) await AsyncStorage.setItem('famicare_avatar', avatar);
+      if (bloodType) await AsyncStorage.setItem('famicare_bloodtype', bloodType);
       login(name.trim(), token || '', userId, role);
       Alert.alert('Başarılı', 'Profil güncellendi');
       router.back();
@@ -49,6 +51,14 @@ export default function EditProfileScreen() {
       <View style={{ padding: spacing.lg }}>
         <Text style={styles.label}>Profil İkonu Seç</Text>
         <AvatarPicker selected={avatar} onSelect={setAvatar} />
+        <Text style={styles.label}>Kan Grubu</Text>
+        <View style={{ flexDirection: 'row', gap: spacing.sm, marginBottom: spacing.md }}>
+          {['A Rh+', 'A Rh-', 'B Rh+', 'B Rh-', 'AB Rh+', 'AB Rh-', '0 Rh+', '0 Rh-'].map(t => (
+            <TouchableOpacity key={t} style={[styles.pill, bloodType === t && { backgroundColor: colors.primary }]} onPress={() => setBloodType(t)}>
+              <Text style={{ color: bloodType === t ? '#FFF' : colors.text, fontSize: 12, fontWeight: '600' }}>{t}</Text>
+            </TouchableOpacity>
+          ))}
+        </View>
         <Text style={styles.label}>Ad Soyad</Text>
         <TextInput style={styles.input} value={name} onChangeText={setName} placeholder="Adınız Soyadınız" />
         <Button title={saving ? 'Kaydediliyor...' : 'Kaydet'} onPress={save} disabled={saving} style={{ marginTop: spacing.lg }} />
@@ -59,4 +69,5 @@ export default function EditProfileScreen() {
 const styles = StyleSheet.create({
   label: { ...typography.caption, color: colors.textSecondary, marginBottom: spacing.xs, marginTop: spacing.md },
   input: { backgroundColor: colors.surface, borderRadius: borderRadius.input, paddingHorizontal: 16, paddingVertical: 14, fontSize: 16, color: colors.text, borderWidth: 1, borderColor: colors.border, marginBottom: spacing.sm, minHeight: 48 },
+  pill: { paddingHorizontal: 10, paddingVertical: 6, borderRadius: 8, backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border, marginBottom: 4 },
 });
