@@ -1,4 +1,3 @@
-import { useEffect, useState } from 'react';
 import { View, Text, TouchableOpacity, StyleSheet, ScrollView } from 'react-native';
 import { useRouter } from 'expo-router';
 import { colors } from '../src/theme/colors';
@@ -18,33 +17,25 @@ const PROFILES = [
 export default function WelcomeScreen() {
   const router = useRouter();
   const setRole = useAuthStore((s) => s.setRole);
-  const [ready, setReady] = useState(false);
+  const isLoggedIn = useAuthStore((s) => s.isLoggedIn);
+  const role = useAuthStore((s) => s.role);
 
-  useEffect(() => {
-    setTimeout(() => {
-      const s = useAuthStore.getState();
-      if (s.isLoggedIn && s.role) {
-        router.replace(s.role === 'caregiver' ? '/caregiver' : '/home');
-      } else {
-        setReady(true);
-      }
-    }, 100);
-  }, []);
-
-  if (!ready) return null;
+  // If already logged in, redirect immediately
+  if (isLoggedIn && role) {
+    router.replace(role === 'caregiver' ? '/caregiver' : '/home');
+    return null;
+  }
 
   return (
     <ScrollView style={{ flex: 1, backgroundColor: colors.background }} contentContainerStyle={{ paddingBottom: spacing.xxl }}>
       <View style={{ alignItems: 'center', paddingTop: 80, paddingHorizontal: spacing.lg, marginBottom: spacing.xl }}>
         <Text style={{ ...typography.h1, color: colors.primary, marginBottom: spacing.sm }}>Famicare</Text>
-        <Text style={{ ...typography.h3, color: colors.textSecondary, textAlign: 'center', lineHeight: 28 }}>
-          Sevdikleriniz güvende,{'\n'}siz içiniz rahat.
-        </Text>
+        <Text style={{ ...typography.h3, color: colors.textSecondary, textAlign: 'center', lineHeight: 28 }}>Sevdikleriniz güvende,{'\n'}siz içiniz rahat.</Text>
       </View>
 
       <View style={{ flexDirection: 'row', flexWrap: 'wrap', paddingHorizontal: spacing.md, gap: spacing.sm }}>
         {PROFILES.map((p) => (
-          <TouchableOpacity key={p.id} style={[styles.card, { borderColor: p.color + '40' }]}             onPress={() => { setRole(p.role); router.push('/login'); }}>
+          <TouchableOpacity key={p.id} style={[styles.card, { borderColor: p.color + '40' }]} onPress={() => { setRole(p.role); router.push('/login'); }}>
             <Text style={{ fontSize: 36, marginBottom: spacing.sm }}>{p.icon}</Text>
             <Text style={{ ...typography.body, fontWeight: '600', color: colors.text, textAlign: 'center' }}>{p.label}</Text>
             <Text style={{ ...typography.small, color: colors.textLight, textAlign: 'center', marginTop: 4 }}>{p.desc}</Text>
@@ -52,7 +43,7 @@ export default function WelcomeScreen() {
         ))}
       </View>
 
-      <TouchableOpacity style={{ marginTop: spacing.xl, alignItems: 'center', minHeight: 48, justifyContent: 'center' }} onPress={() => { router.push('/login?existing=1'); }}>
+      <TouchableOpacity style={{ marginTop: spacing.xl, alignItems: 'center', minHeight: 48, justifyContent: 'center' }} onPress={() => router.push('/login?existing=1')}>
         <Text style={{ ...typography.body, color: colors.primary, fontWeight: '600' }}>🔑 Zaten kayıtlıyım</Text>
         <Text style={{ ...typography.small, color: colors.textLight, marginTop: 2 }}>Telefon + PIN ile giriş yap</Text>
       </TouchableOpacity>

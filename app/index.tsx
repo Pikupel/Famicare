@@ -1,14 +1,12 @@
-import { useState, useEffect, useRef } from 'react';
+import { useRef, useState } from 'react';
 import { View, Text, StyleSheet, FlatList, Dimensions, TouchableOpacity } from 'react-native';
 import { useRouter } from 'expo-router';
-import { useAuthStore } from '../src/stores/useAuthStore';
 import { colors } from '../src/theme/colors';
 import { typography } from '../src/theme/typography';
-import { spacing, borderRadius } from '../src/theme/spacing';
+import { spacing } from '../src/theme/spacing';
 import { Button } from '../src/components/Button';
 
 const { width } = Dimensions.get('window');
-
 const STEPS = [
   { icon: '💊', title: 'İlaç Hatırlatma', desc: 'İlaçlarınızı zamanında almanız için\nsize ve yakınınıza hatırlatma gönderir.' },
   { icon: '❤️', title: 'Aile Takibi', desc: 'Yakınlarınızın ilaçlarını alıp\n almadığını anında görürsünüz.' },
@@ -17,26 +15,8 @@ const STEPS = [
 
 export default function OnboardingScreen() {
   const router = useRouter();
-  const isLoggedIn = useAuthStore((s) => s.isLoggedIn);
-  const role = useAuthStore((s) => s.role);
   const [page, setPage] = useState(0);
-  const [checked, setChecked] = useState(false);
   const flatRef = useRef<FlatList>(null);
-
-  useEffect(() => {
-    // Small delay to let Zustand hydrate from AsyncStorage
-    setTimeout(() => {
-      const currentRole = useAuthStore.getState().role;
-      const currentLogin = useAuthStore.getState().isLoggedIn;
-      if (currentLogin && currentRole) {
-        router.replace(currentRole === 'caregiver' ? '/caregiver' : '/home');
-      } else {
-        setChecked(true);
-      }
-    }, 100);
-  }, []);
-
-  if (!checked) return null;
 
   const next = () => {
     if (page < STEPS.length - 1) {
@@ -64,11 +44,7 @@ export default function OnboardingScreen() {
         keyExtractor={(_, i) => String(i)}
       />
       <View style={styles.bottom}>
-        <View style={styles.dots}>
-          {STEPS.map((_, i) => (
-            <View key={i} style={[styles.dot, i === page && { backgroundColor: colors.primary, width: 24 }]} />
-          ))}
-        </View>
+        <View style={styles.dots}>{STEPS.map((_, i) => (<View key={i} style={[styles.dot, i === page && { backgroundColor: colors.primary, width: 24 }]} />))}</View>
         <Button title={page < STEPS.length - 1 ? 'Devam' : 'Başla'} onPress={next} />
       </View>
     </View>
