@@ -34,7 +34,7 @@ export default function LoginScreen() {
     } catch (err: any) {
       if (err?.message?.includes('zaten kayıtlı')) {
         try {
-          const res = await api.post<{ user: { id: string; name: string }; token: string }>('/auth/login', { phone: phone.trim() });
+          const res = await api.post<{ user: { id: string; name: string }; token: string }>('/auth/login', { phone: phone.trim(), role });
           login(res.user.name, res.token, res.user.id, role!);
           router.replace(role === 'caregiver' ? '/caregiver' : '/home');
         } catch { Alert.alert('Hata', 'Giriş yapılamadı'); }

@@ -23,10 +23,11 @@ router.post('/register', async (req, res) => {
 });
 
 router.post('/login', async (req, res) => {
-  const { phone } = req.body;
+  const { phone, role } = req.body;
   if (!phone) return res.status(400).json({ error: 'Telefon gerekli' });
   const user = db.data.users.find(u => u.phone === phone);
   if (!user) return res.status(404).json({ error: 'Kullanıcı bulunamadı' });
+  if (role && user.role !== role) return res.status(403).json({ error: 'Bu hesap farklı bir rolle kaydedilmiş' });
   const token = generateToken(user);
   res.json({ user: { id: user.id, name: user.name, role: user.role, phone: user.phone }, token });
 });

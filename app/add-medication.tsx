@@ -55,8 +55,8 @@ export default function AddMedicationScreen() {
         <TextInput style={styles.input} value={dosage} onChangeText={setDosage} placeholder="1 Tablet" />
         <Text style={styles.label}>Kullanım Şekli</Text>
         <View style={{ flexDirection: 'row', gap: spacing.sm, flexWrap: 'wrap' }}>
-          {[['🍽️', 'Aç karnına'], ['🍴', 'Tok karnına'], ['🌅', 'Sabah'], ['🌙', 'Akşam']].map(([icon, label]) => (
-            <TouchableOpacity key={label} style={[styles.option, { width: '47%' }, instruction === label && styles.optionActive]} onPress={() => setInstruction(label)}>
+          {[['🍽️', 'Aç karnına'], ['🍴', 'Tok karnına'], ['🌅', 'Sabah'], ['☀️', 'Öğlen'], ['🌙', 'Akşam']].map(([icon, label]) => (
+            <TouchableOpacity key={label} style={[styles.option, { width: '30%' }, instruction === label && styles.optionActive]} onPress={() => setInstruction(label)}>
               <Text style={{ fontSize: 18 }}>{icon}</Text>
               <Text style={{ ...typography.body, color: instruction === label ? '#FFF' : colors.text, textAlign: 'center' }}>{label}</Text>
             </TouchableOpacity>
