@@ -19,7 +19,7 @@ interface AuthState {
 export const useAuthStore = create<AuthState>()(
   persist(
     (set) => ({
-      role: null, isLoggedIn: false, userName: '', userId: '', token: null, hydrated: true,
+      role: null, isLoggedIn: false, userName: '', userId: '', token: null, hydrated: false,
       setRole: (role) => set({ role }),
       login: (name, token, userId, role) => set({ isLoggedIn: true, userName: name, token, userId, role }),
       logout: () => set({ isLoggedIn: false, role: null, userName: '', userId: '', token: null }),
