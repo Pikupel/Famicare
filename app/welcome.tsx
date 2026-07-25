@@ -1,4 +1,3 @@
-import { useEffect, useRef } from 'react';
 import { View, Text, TouchableOpacity, StyleSheet, ScrollView } from 'react-native';
 import { useRouter } from 'expo-router';
 import { colors } from '../src/theme/colors';
@@ -18,19 +17,6 @@ const PROFILES = [
 export default function WelcomeScreen() {
   const router = useRouter();
   const setRole = useAuthStore((s) => s.setRole);
-  const isLoggedIn = useAuthStore((s) => s.isLoggedIn);
-  const role = useAuthStore((s) => s.role);
-  const redirected = useRef(false);
-
-  useEffect(() => {
-    if (isLoggedIn && role && !redirected.current) {
-      redirected.current = true;
-      const timer = setTimeout(() => {
-        router.replace(role === 'caregiver' ? '/caregiver' : '/home');
-      }, 50);
-      return () => clearTimeout(timer);
-    }
-  }, [isLoggedIn, role]);
 
   return (
     <ScrollView style={{ flex: 1, backgroundColor: colors.background }} contentContainerStyle={{ paddingBottom: spacing.xxl }}>

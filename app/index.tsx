@@ -1,6 +1,7 @@
-import { useRef, useState } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { View, Text, StyleSheet, FlatList, Dimensions, TouchableOpacity } from 'react-native';
 import { useRouter } from 'expo-router';
+import { useAuthStore } from '../src/stores/useAuthStore';
 import { colors } from '../src/theme/colors';
 import { typography } from '../src/theme/typography';
 import { spacing } from '../src/theme/spacing';
@@ -16,7 +17,22 @@ const STEPS = [
 export default function OnboardingScreen() {
   const router = useRouter();
   const [page, setPage] = useState(0);
+  const [ready, setReady] = useState(false);
   const flatRef = useRef<FlatList>(null);
+
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      const { isLoggedIn, role } = useAuthStore.getState();
+      if (isLoggedIn && role) {
+        router.replace(role === 'caregiver' ? '/caregiver' : '/home');
+      } else {
+        setReady(true);
+      }
+    }, 500);
+    return () => clearTimeout(timer);
+  }, []);
+
+  if (!ready) return null;
 
   const next = () => {
     if (page < STEPS.length - 1) {
