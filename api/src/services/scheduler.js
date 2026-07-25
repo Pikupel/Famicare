@@ -41,9 +41,10 @@ async function checkMissedDoses() {
     );
     if (alreadyTaken) continue;
 
-    // Check if we already sent a notification for this today
+    // Check if we already sent a notification for this medication + time today
+    const timeLabel = medication.times[0];
     const alreadyNotified = db.data.notifications.some(
-      n => n.type === 'missed_dose' && n.body?.includes(medication.name) && n.createdAt?.startsWith(today)
+      n => n.type === 'missed_dose' && n.body?.includes(medication.name) && n.body?.includes(timeLabel) && n.createdAt?.startsWith(today)
     );
     if (alreadyNotified) continue;
 
@@ -53,7 +54,7 @@ async function checkMissedDoses() {
     if (profile.linkedUserId) {
       db.data.notifications.push({
         id: uuid(), userId: profile.linkedUserId, type: 'missed_dose',
-        title: '⚠️ Doz Kaçırıldı', body: `${medication.name} ilacınızı almadınız.`,
+        title: '⚠️ Doz Kaçırıldı', body: `${medication.name} - ${medication.times[0]} ilacınızı almadınız.`,
         isRead: false, createdAt: now.toISOString(),
       });
     }
