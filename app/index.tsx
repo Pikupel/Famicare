@@ -1,6 +1,7 @@
-import { useState, useRef } from 'react';
-import { View, Text, StyleSheet, FlatList, Dimensions, TouchableOpacity } from 'react-native';
+import { useState, useEffect, useRef } from 'react';
+import { View, Text, StyleSheet, FlatList, Dimensions, TouchableOpacity, ActivityIndicator } from 'react-native';
 import { useRouter } from 'expo-router';
+import { useAuthStore } from '../src/stores/useAuthStore';
 import { colors } from '../src/theme/colors';
 import { typography } from '../src/theme/typography';
 import { spacing, borderRadius } from '../src/theme/spacing';
@@ -9,27 +10,32 @@ import { Button } from '../src/components/Button';
 const { width } = Dimensions.get('window');
 
 const STEPS = [
-  {
-    icon: '💊',
-    title: 'İlaç Hatırlatma',
-    desc: 'İlaçlarınızı zamanında almanız için\nsize ve yakınınıza hatırlatma gönderir.',
-  },
-  {
-    icon: '❤️',
-    title: 'Aile Takibi',
-    desc: 'Yakınlarınızın ilaçlarını alıp\n almadığını anında görürsünüz.',
-  },
-  {
-    icon: '🏠',
-    title: 'Hazırsınız',
-    desc: 'Telefon numaranızla giriş yapın,\nbir dakikada kullanmaya başlayın.',
-  },
+  { icon: '💊', title: 'İlaç Hatırlatma', desc: 'İlaçlarınızı zamanında almanız için\nsize ve yakınınıza hatırlatma gönderir.' },
+  { icon: '❤️', title: 'Aile Takibi', desc: 'Yakınlarınızın ilaçlarını alıp\n almadığını anında görürsünüz.' },
+  { icon: '🏠', title: 'Hazırsınız', desc: 'Telefon numaranızla giriş yapın,\nbir dakikada kullanmaya başlayın.' },
 ];
 
 export default function OnboardingScreen() {
   const router = useRouter();
+  const isLoggedIn = useAuthStore((s) => s.isLoggedIn);
+  const role = useAuthStore((s) => s.role);
+  const hydrated = useAuthStore((s) => s.hydrated);
   const [page, setPage] = useState(0);
   const flatRef = useRef<FlatList>(null);
+
+  useEffect(() => {
+    if (hydrated && isLoggedIn && role) {
+      router.replace(role === 'caregiver' ? '/caregiver' : '/home');
+    }
+  }, [hydrated, isLoggedIn, role]);
+
+  if (hydrated && isLoggedIn && role) return null;
+
+  if (!hydrated) {
+    return <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: colors.background }}>
+      <ActivityIndicator size="large" color={colors.primary} />
+    </View>;
+  }
 
   const next = () => {
     if (page < STEPS.length - 1) {
@@ -45,26 +51,17 @@ export default function OnboardingScreen() {
       <TouchableOpacity style={styles.skip} onPress={() => router.replace('/welcome')}>
         <Text style={{ ...typography.body, color: colors.primary }}>Atla</Text>
       </TouchableOpacity>
-
-      <FlatList
-        ref={flatRef}
-        data={STEPS}
-        horizontal
-        pagingEnabled
-        showsHorizontalScrollIndicator={false}
+      <FlatList ref={flatRef} data={STEPS} horizontal pagingEnabled showsHorizontalScrollIndicator={false}
         onMomentumScrollEnd={(e) => setPage(Math.round(e.nativeEvent.contentOffset.x / width))}
         renderItem={({ item }) => (
           <View style={styles.page}>
-            <View style={styles.iconCircle}>
-              <Text style={{ fontSize: 56 }}>{item.icon}</Text>
-            </View>
+            <View style={styles.iconCircle}><Text style={{ fontSize: 56 }}>{item.icon}</Text></View>
             <Text style={styles.title}>{item.title}</Text>
             <Text style={styles.desc}>{item.desc}</Text>
           </View>
         )}
         keyExtractor={(_, i) => String(i)}
       />
-
       <View style={styles.bottom}>
         <View style={styles.dots}>
           {STEPS.map((_, i) => (
