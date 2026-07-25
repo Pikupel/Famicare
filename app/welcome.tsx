@@ -1,5 +1,7 @@
-import { View, Text, TouchableOpacity, StyleSheet, ScrollView } from 'react-native';
+import { useEffect, useState } from 'react';
+import { View, Text, TouchableOpacity, StyleSheet, ScrollView, ActivityIndicator } from 'react-native';
 import { useRouter } from 'expo-router';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { colors } from '../src/theme/colors';
 import { typography } from '../src/theme/typography';
 import { spacing, borderRadius } from '../src/theme/spacing';
@@ -17,6 +19,27 @@ const PROFILES = [
 export default function WelcomeScreen() {
   const router = useRouter();
   const setRole = useAuthStore((s) => s.setRole);
+  const isLoggedIn = useAuthStore((s) => s.isLoggedIn);
+  const role = useAuthStore((s) => s.role);
+  const hydrated = useAuthStore((s) => s.hydrated);
+  const [checking, setChecking] = useState(true);
+
+  useEffect(() => {
+    if (!hydrated) return;
+    if (isLoggedIn && role) {
+      AsyncStorage.getItem('famicare_pin').then(pin => {
+        router.replace(pin ? '/pin-entry' : (role === 'caregiver' ? '/caregiver' : '/home'));
+      }).catch(() => router.replace(role === 'caregiver' ? '/caregiver' : '/home'));
+    } else {
+      setChecking(false);
+    }
+  }, [hydrated, isLoggedIn, role]);
+
+  if (!hydrated || checking) {
+    return <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: colors.background }}>
+      <ActivityIndicator size="large" color={colors.primary} />
+    </View>;
+  }
 
   return (
     <ScrollView style={{ flex: 1, backgroundColor: colors.background }} contentContainerStyle={{ paddingBottom: spacing.xxl }}>
@@ -41,7 +64,7 @@ export default function WelcomeScreen() {
         ))}
       </View>
 
-      <Text style={{ ...typography.small, color: colors.textLight, textAlign: 'center', marginTop: spacing.xl, paddingHorizontal: spacing.lg }}>
+      <Text style={{ ...typography.small, color: colors.textLight, textAlign: 'center', marginTop: spacing.xl }}>
         Seçiminiz daha sonra değiştirilebilir.
       </Text>
     </ScrollView>
