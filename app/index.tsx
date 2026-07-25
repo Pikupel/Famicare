@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
-import { View, Text, StyleSheet, FlatList, Dimensions, TouchableOpacity, ActivityIndicator } from 'react-native';
+import { View, Text, StyleSheet, FlatList, Dimensions, TouchableOpacity } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useAuthStore } from '../src/stores/useAuthStore';
 import { colors } from '../src/theme/colors';
@@ -19,23 +19,24 @@ export default function OnboardingScreen() {
   const router = useRouter();
   const isLoggedIn = useAuthStore((s) => s.isLoggedIn);
   const role = useAuthStore((s) => s.role);
-  const hydrated = useAuthStore((s) => s.hydrated);
   const [page, setPage] = useState(0);
+  const [checked, setChecked] = useState(false);
   const flatRef = useRef<FlatList>(null);
 
   useEffect(() => {
-    if (hydrated && isLoggedIn && role) {
-      router.replace(role === 'caregiver' ? '/caregiver' : '/home');
-    }
-  }, [hydrated, isLoggedIn, role]);
+    // Small delay to let Zustand hydrate from AsyncStorage
+    setTimeout(() => {
+      const currentRole = useAuthStore.getState().role;
+      const currentLogin = useAuthStore.getState().isLoggedIn;
+      if (currentLogin && currentRole && currentRole !== 'existing') {
+        router.replace(currentRole === 'caregiver' ? '/caregiver' : '/home');
+      } else {
+        setChecked(true);
+      }
+    }, 100);
+  }, []);
 
-  if (hydrated && isLoggedIn && role) return null;
-
-  if (!hydrated) {
-    return <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: colors.background }}>
-      <ActivityIndicator size="large" color={colors.primary} />
-    </View>;
-  }
+  if (!checked) return null;
 
   const next = () => {
     if (page < STEPS.length - 1) {

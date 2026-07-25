@@ -1,7 +1,6 @@
 import { useEffect, useState } from 'react';
-import { View, Text, TouchableOpacity, StyleSheet, ScrollView, ActivityIndicator } from 'react-native';
+import { View, Text, TouchableOpacity, StyleSheet, ScrollView } from 'react-native';
 import { useRouter } from 'expo-router';
-import AsyncStorage from '@react-native-async-storage/async-storage';
 import { colors } from '../src/theme/colors';
 import { typography } from '../src/theme/typography';
 import { spacing, borderRadius } from '../src/theme/spacing';
@@ -19,25 +18,20 @@ const PROFILES = [
 export default function WelcomeScreen() {
   const router = useRouter();
   const setRole = useAuthStore((s) => s.setRole);
-  const isLoggedIn = useAuthStore((s) => s.isLoggedIn);
-  const role = useAuthStore((s) => s.role);
-  const hydrated = useAuthStore((s) => s.hydrated);
-  const [checking, setChecking] = useState(true);
+  const [ready, setReady] = useState(false);
 
   useEffect(() => {
-    if (!hydrated) return;
-    if (isLoggedIn && role) {
-      router.replace(role === 'caregiver' ? '/caregiver' : '/home');
-    } else {
-      setChecking(false);
-    }
-  }, [hydrated, isLoggedIn, role]);
+    setTimeout(() => {
+      const s = useAuthStore.getState();
+      if (s.isLoggedIn && s.role && s.role !== 'existing') {
+        router.replace(s.role === 'caregiver' ? '/caregiver' : '/home');
+      } else {
+        setReady(true);
+      }
+    }, 100);
+  }, []);
 
-  if (!hydrated || checking) {
-    return <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: colors.background }}>
-      <ActivityIndicator size="large" color={colors.primary} />
-    </View>;
-  }
+  if (!ready) return null;
 
   return (
     <ScrollView style={{ flex: 1, backgroundColor: colors.background }} contentContainerStyle={{ paddingBottom: spacing.xxl }}>
@@ -50,11 +44,7 @@ export default function WelcomeScreen() {
 
       <View style={{ flexDirection: 'row', flexWrap: 'wrap', paddingHorizontal: spacing.md, gap: spacing.sm }}>
         {PROFILES.map((p) => (
-          <TouchableOpacity
-            key={p.id}
-            style={[styles.card, { borderColor: p.color + '40' }]}
-            onPress={() => { setRole(p.role as 'caregiver' | 'elderly'); router.push('/login'); }}
-          >
+          <TouchableOpacity key={p.id} style={[styles.card, { borderColor: p.color + '40' }]} onPress={() => { setRole(p.role as 'caregiver' | 'elderly'); router.push('/login'); }}>
             <Text style={{ fontSize: 36, marginBottom: spacing.sm }}>{p.icon}</Text>
             <Text style={{ ...typography.body, fontWeight: '600', color: colors.text, textAlign: 'center' }}>{p.label}</Text>
             <Text style={{ ...typography.small, color: colors.textLight, textAlign: 'center', marginTop: 4 }}>{p.desc}</Text>
@@ -71,9 +61,5 @@ export default function WelcomeScreen() {
 }
 
 const styles = StyleSheet.create({
-  card: {
-    width: '48%', backgroundColor: colors.surface, borderRadius: borderRadius.card,
-    padding: 20, alignItems: 'center', borderWidth: 1.5, minHeight: 140,
-    shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.04, shadowRadius: 6, elevation: 2,
-  },
+  card: { width: '48%', backgroundColor: colors.surface, borderRadius: borderRadius.card, padding: 20, alignItems: 'center', borderWidth: 1.5, minHeight: 140, shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.04, shadowRadius: 6, elevation: 2 },
 });
