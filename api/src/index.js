@@ -3,7 +3,6 @@ import cors from 'cors';
 import { join, dirname } from 'path';
 import { fileURLToPath } from 'url';
 import { initDb } from './db.js';
-import { initPg } from './db-pg.js';
 import { startScheduler } from './services/scheduler.js';
 import authRoutes from './routes/auth.js';
 
@@ -42,7 +41,6 @@ app.use('/api/v1/notifications', notificationRoutes);
 app.use('/api/v1/dashboard', dashboardRoutes);
 
 await initDb();
-await initPg();
 startScheduler();
 app.listen(PORT, () => {
   console.log(`Famicare API running on http://localhost:${PORT}`);

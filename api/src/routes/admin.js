@@ -1,5 +1,5 @@
 import { Router } from 'express';
-import { db, uuid } from '../db.js';
+import { db, uuid, writeToDb, deleteFromDb } from '../db.js';
 
 const router = Router();
 const ADMIN_KEY = process.env.ADMIN_KEY || 'famicare-admin-2026';
@@ -114,7 +114,7 @@ router.patch('/profiles/:id', async (req, res) => {
   res.json(db.data.profiles[idx]);
 });
 
-// Delete a profile by ID (cascade)
+// Delete a profile by ID (cascade with PostgreSQL sync)
 router.delete('/profiles/:id', async (req, res) => {
   const profile = db.data.profiles.find(p => p.id === req.params.id);
   if (!profile) return res.status(404).json({ error: 'Profil bulunamadı' });
@@ -125,6 +125,16 @@ router.delete('/profiles/:id', async (req, res) => {
   db.data.appointments = db.data.appointments.filter(a => a.profileId !== pid);
   db.data.healthRecords = db.data.healthRecords.filter(r => r.profileId !== pid);
   await db.write();
+  if (process.env.DATABASE_URL) {
+    try {
+      const { pgPool } = await import('../db.js');
+      await pgPool.query('DELETE FROM profiles WHERE id = $1', [pid]);
+      await pgPool.query('DELETE FROM medications WHERE profile_id = $1', [pid]);
+      await pgPool.query('DELETE FROM medication_logs WHERE profile_id = $1', [pid]);
+      await pgPool.query('DELETE FROM appointments WHERE profile_id = $1', [pid]);
+      await pgPool.query('DELETE FROM health_records WHERE profile_id = $1', [pid]);
+    } catch {}
+  }
   res.json({ success: true, deletedName: profile.name });
 });
 

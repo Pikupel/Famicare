@@ -56,6 +56,7 @@ input,select { border:1px solid #e2e8f0; border-radius:8px; padding:8px 12px; fo
     <div class="card" style="display:flex; gap:8px; flex-wrap:wrap">
       <button class="btn" onclick="importDrugs()">📥 TİTCK Import</button>
       <button class="btn" onclick="matchRxNav()">🔗 RxNav Eşleştir</button>
+      <button class="btn btn-warning" onclick="testPush()">🔔 Test Push</button>
       <button class="btn btn-danger" onclick="clearAll()">🗑️ Tüm Veriyi Temizle</button>
       <div id="actionLog" class="log" style="margin-top:12px; width:100%">Hazır</div>
     </div>
@@ -160,6 +161,10 @@ async function importDrugs() {
 async function matchRxNav() {
   log('⏳ RxNav eşleştirme...');
   try { const r = await api('/match-rxnav', {method:'POST'}); log(`✅ Eşleşen: ${r.matched}, Başarısız: ${r.failed}, Kalan: ${r.remaining}`); } catch(e) { log('❌ '+e.message); }
+}
+async function testPush() {
+  log('⏳ Test push gönderiliyor...');
+  try { const r = await api('/test-push', {method:'POST'}); log('✅ Test push sonucu: '+JSON.stringify(r.results)); } catch(e) { log('❌ '+e.message); }
 }
 async function clearAll() {
   if(!confirm('Tüm kullanıcı, profil, ilaç, randevu ve sağlık verileri silinsin mi?')) return;
