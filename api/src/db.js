@@ -50,12 +50,14 @@ async function migratePg() {
     CREATE TABLE IF NOT EXISTS emergency_contacts (id TEXT PRIMARY KEY, user_id TEXT, name TEXT, phone TEXT, relationship TEXT);
   `);
 
-  // Sync data FROM PostgreSQL to JSON (so deletes persist across restarts)
+  // Sync FROM PostgreSQL TO JSON (PostgreSQL is source of truth when available)
   await syncFromPg('users', 'id', 'phone', 'name', 'role', 'fcm_token');
   await syncFromPg('profiles', 'id', 'caregiver_id', 'name', 'birth_date', 'relationship', 'phone', 'invite_code', 'linked_user_id');
   await syncFromPg('medications', 'id', 'profile_id', 'name', 'dosage', 'instructions', 'times', 'end_date', 'purpose', 'stock_total');
   await syncFromPg('medication_logs', 'id', 'medication_id', 'profile_id', 'scheduled_time', 'date', 'status', 'taken_at', 'confirmed_by', 'changed_by');
   await syncFromPg('appointments', 'id', 'profile_id', 'title', 'location', 'doctor_name', 'date', 'time', 'notes', 'status');
+  await syncFromPg('health_records', 'id', 'profile_id', 'record_type', 'value_data', 'measured_at', 'recorded_by');
+  await syncFromPg('notifications', 'id', 'user_id', 'type', 'title', 'body', 'is_read');
   console.log('📦 PostgreSQL → JSON senkronizasyon tamam');
 }
 
@@ -77,10 +79,11 @@ const SNAKE_TO_CAMEL = {
   stock_refill_date: 'stockRefillDate', user_id: 'userId',
 };
 
+const SYNC_TABLES = ['users', 'profiles', 'medications', 'medication_logs', 'appointments', 'health_records', 'notifications'];
+
 async function syncFromPg(table, ...columns) {
   try {
-    const result = await pgPool.query(`SELECT * FROM ${table} ORDER BY created_at DESC`);
-    if (result.rows.length === 0) return;
+    const result = await pgPool.query(`SELECT * FROM ${table}`);
     const items = result.rows.map(row => {
       const obj = {};
       for (const col of columns) {
