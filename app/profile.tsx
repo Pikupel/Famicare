@@ -150,6 +150,9 @@ export default function ProfileScreen() {
                 <Text style={{ fontSize: 20, color: colors.textLight }}>›</Text>
               </TouchableOpacity>
             </View>
+            <TouchableOpacity style={styles.helpBtn} onPress={async () => { const { sendTestNotification, setupNotifications } = await import('../src/services/notifications'); await setupNotifications(); const ok = await sendTestNotification(); Alert.alert(ok ? '✅ Bildirim Gönderildi' : '❌ Hata', ok ? 'Telefonunu 2 saniye içinde bir bildirim gelecek.' : 'Bildirim gönderilemedi.'); }}>
+              <Text style={{ ...typography.button, color: colors.textLight }}>🔔 Test Bildirimi</Text>
+            </TouchableOpacity>
             <TouchableOpacity style={styles.helpBtn} onPress={() => router.push('/help')}>
               <Text style={{ ...typography.button, color: colors.textLight }}>❓ Yardım</Text>
             </TouchableOpacity>

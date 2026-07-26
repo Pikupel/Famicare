@@ -128,6 +128,16 @@ router.delete('/profiles/:id', async (req, res) => {
   res.json({ success: true, deletedName: profile.name });
 });
 
+// Send test push to all users
+router.post('/test-push', async (req, res) => {
+  const { sendPush } = await import('../services/push.js');
+  const results = [];
+  for (const user of db.data.users) {
+    try { await sendPush(user.id, '🔔 Test Bildirimi', 'Famicare push notification çalışıyor! ✅'); results.push(`${user.name}: gönderildi`); } catch { results.push(`${user.name}: hata`); }
+  }
+  res.json({ results });
+});
+
 // Clear all data
 router.post('/clear-all', async (req, res) => {
   db.data.users = [];
