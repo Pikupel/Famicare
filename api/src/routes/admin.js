@@ -25,13 +25,19 @@ function sameSecret(candidate, expected) {
   return left.length === right.length && timingSafeEqual(left, right);
 }
 
+function normalizeUsername(value) {
+  return String(value || '').trim().normalize('NFKC').toLocaleLowerCase('en-US');
+}
+
 router.post('/session', async (req, res) => {
   const identifier = req.ip || req.socket.remoteAddress || 'unknown';
   const attempt = adminLoginAttempts.get(identifier);
   if (attempt?.blockedUntil > Date.now()) {
     return res.status(429).json({ error: 'Çok fazla başarısız deneme. 15 dakika bekleyin.' });
   }
-  const usernameValid = sameSecret(req.body?.username, effectiveAdminUsername);
+  const receivedUsername = normalizeUsername(req.body?.username);
+  const configuredUsername = normalizeUsername(effectiveAdminUsername);
+  const usernameValid = sameSecret(receivedUsername, configuredUsername);
   const passwordValid = usernameValid && await bcrypt.compare(String(req.body?.password || ''), effectiveAdminPasswordHash);
   const totpResult = passwordValid && /^\d{6}$/.test(req.body?.totp || '')
     ? await verifyTotp({ secret: effectiveAdminTotpSecret, token: req.body.totp })
@@ -41,6 +47,8 @@ router.post('/session', async (req, res) => {
       usernameValid,
       passwordValid,
       totpValid: Boolean(totpResult.valid),
+      receivedUsernameLength: receivedUsername.length,
+      configuredUsernameLength: configuredUsername.length,
     });
     const failures = (attempt?.failures || 0) + 1;
     adminLoginAttempts.set(identifier, failures >= 5
