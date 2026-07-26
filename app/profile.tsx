@@ -8,6 +8,7 @@ import { spacing, borderRadius, shadow } from '../src/theme/spacing';
 import { useAuthStore } from '../src/stores/useAuthStore';
 import { BottomNav } from '../src/components/BottomNav';
 import { api } from '../src/services/api';
+import { useTheme } from '../src/theme/ThemeProvider';
 
 const AVATAR_EMOJI: Record<string, string> = {
   elderly_woman: '👵', elderly_man: '👴', elderly_hijabi: '🧕',
@@ -21,9 +22,9 @@ export default function ProfileScreen() {
   const userName = useAuthStore((s) => s.userName);
   const role = useAuthStore((s) => s.role);
   const logout = useAuthStore((s) => s.logout);
-  const [avatarEmoji, setAvatarEmoji] = useState('👤');
+  const { theme, toggleTheme, isDark } = useTheme();
   const homeRoute = role === 'caregiver' ? '/caregiver' : '/home';
-
+  const [avatarEmoji, setAvatarEmoji] = useState('👤');
   const [bloodType, setBloodType] = useState('A Rh+');
 
   useEffect(() => {
@@ -44,10 +45,10 @@ export default function ProfileScreen() {
   const isCaregiverView = role === 'caregiver' && !!params.name;
 
   return (
-    <View style={{ flex: 1, backgroundColor: colors.background }}>
-      <View style={{ paddingTop: 56, paddingHorizontal: spacing.lg, paddingBottom: spacing.md }}>
+    <View style={{ flex: 1, backgroundColor: isDark ? '#0B1C30' : colors.background }}>
+      <View style={{ paddingTop: 56, paddingHorizontal: spacing.lg, paddingBottom: spacing.md, backgroundColor: isDark ? '#1E293B' : colors.surface }}>
         <TouchableOpacity onPress={() => router.push(homeRoute)} style={{ minHeight: 48, justifyContent: 'center' }}>
-          <Text style={{ fontSize: 28, color: colors.text }}>←</Text>
+          <Text style={{ fontSize: 28, color: isDark ? '#EAF1FF' : colors.text }}>←</Text>
         </TouchableOpacity>
         <Text style={{ ...typography.h2, color: colors.text, marginTop: spacing.md }}>Profil</Text>
       </View>
@@ -150,6 +151,9 @@ export default function ProfileScreen() {
                 <Text style={{ fontSize: 20, color: colors.textLight }}>›</Text>
               </TouchableOpacity>
             </View>
+            <TouchableOpacity style={styles.helpBtn} onPress={toggleTheme}>
+              <Text style={{ ...typography.button, color: colors.textLight }}>{isDark ? '☀️' : '🌙'} {isDark ? 'Aydınlık Tema' : 'Karanlık Tema'}</Text>
+            </TouchableOpacity>
             <TouchableOpacity style={styles.helpBtn} onPress={async () => { const { sendTestNotification, setupNotifications } = await import('../src/services/notifications'); await setupNotifications(); const ok = await sendTestNotification(); Alert.alert(ok ? '✅ Bildirim Gönderildi' : '❌ Hata', ok ? 'Telefonunu 2 saniye içinde bir bildirim gelecek.' : 'Bildirim gönderilemedi.'); }}>
               <Text style={{ ...typography.button, color: colors.textLight }}>🔔 Test Bildirimi</Text>
             </TouchableOpacity>
