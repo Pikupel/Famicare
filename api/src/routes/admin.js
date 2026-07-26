@@ -12,6 +12,8 @@ function requireAdmin(req, res, next) {
 
 router.use(requireAdmin);
 
+import { pgReady } from '../db-pg.js';
+
 // Dashboard stats
 router.get('/stats', (req, res) => {
   const activeDrugs = db.data.drugReferences?.filter(d => d.durum === 'aktif').length || 0;
@@ -26,6 +28,7 @@ router.get('/stats', (req, res) => {
     activeDrugs,
     totalDrugs,
     lastImport: db.data.lastImportDate || 'Yok',
+    pgConnected: pgReady || false,
   });
 });
 
@@ -123,6 +126,20 @@ router.delete('/profiles/:id', async (req, res) => {
   db.data.healthRecords = db.data.healthRecords.filter(r => r.profileId !== pid);
   await db.write();
   res.json({ success: true, deletedName: profile.name });
+});
+
+// Clear all data
+router.post('/clear-all', async (req, res) => {
+  db.data.users = [];
+  db.data.profiles = [];
+  db.data.medications = [];
+  db.data.medicationLogs = [];
+  db.data.appointments = [];
+  db.data.healthRecords = [];
+  db.data.notifications = [];
+  db.data.emergencies = [];
+  await db.write();
+  res.json({ success: true, message: 'Tüm veriler temizlendi' });
 });
 
 export default router;
