@@ -1,5 +1,5 @@
 import { Router } from 'express';
-import { db, uuid, writeToDb, deleteFromDb } from '../db.js';
+import { db, uuid, writeToDb, deleteFromDb, pgPool } from '../db.js';
 
 const router = Router();
 const ADMIN_KEY = process.env.ADMIN_KEY || 'famicare-admin-2026';
@@ -11,8 +11,6 @@ function requireAdmin(req, res, next) {
 }
 
 router.use(requireAdmin);
-
-import { pgReady } from '../db-pg.js';
 
 // Dashboard stats
 router.get('/stats', (req, res) => {
@@ -28,7 +26,7 @@ router.get('/stats', (req, res) => {
     activeDrugs,
     totalDrugs,
     lastImport: db.data.lastImportDate || 'Yok',
-    pgConnected: pgReady || false,
+    pgConnected: pgPool !== null,
   });
 });
 
@@ -125,9 +123,8 @@ router.delete('/profiles/:id', async (req, res) => {
   db.data.appointments = db.data.appointments.filter(a => a.profileId !== pid);
   db.data.healthRecords = db.data.healthRecords.filter(r => r.profileId !== pid);
   await db.write();
-  if (process.env.DATABASE_URL) {
+  if (pgPool) {
     try {
-      const { pgPool } = await import('../db.js');
       await pgPool.query('DELETE FROM profiles WHERE id = $1', [pid]);
       await pgPool.query('DELETE FROM medications WHERE profile_id = $1', [pid]);
       await pgPool.query('DELETE FROM medication_logs WHERE profile_id = $1', [pid]);
