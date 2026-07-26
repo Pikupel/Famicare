@@ -49,6 +49,52 @@ async function migratePg() {
     CREATE TABLE IF NOT EXISTS emergencies (id TEXT PRIMARY KEY, profile_id TEXT, status TEXT, created_at TIMESTAMPTZ DEFAULT NOW());
     CREATE TABLE IF NOT EXISTS emergency_contacts (id TEXT PRIMARY KEY, user_id TEXT, name TEXT, phone TEXT, relationship TEXT);
   `);
+
+  // Sync data FROM PostgreSQL to JSON (so deletes persist across restarts)
+  await syncFromPg('users', 'id', 'phone', 'name', 'role', 'fcm_token');
+  await syncFromPg('profiles', 'id', 'caregiver_id', 'name', 'birth_date', 'relationship', 'phone', 'invite_code', 'linked_user_id');
+  await syncFromPg('medications', 'id', 'profile_id', 'name', 'dosage', 'instructions', 'times', 'end_date', 'purpose', 'stock_total');
+  await syncFromPg('medication_logs', 'id', 'medication_id', 'profile_id', 'scheduled_time', 'date', 'status', 'taken_at', 'confirmed_by', 'changed_by');
+  await syncFromPg('appointments', 'id', 'profile_id', 'title', 'location', 'doctor_name', 'date', 'time', 'notes', 'status');
+  console.log('📦 PostgreSQL → JSON senkronizasyon tamam');
+}
+
+const TABLE_TO_KEY = {
+  users: 'users', profiles: 'profiles', medications: 'medications',
+  medication_logs: 'medicationLogs', appointments: 'appointments',
+  health_records: 'healthRecords', notifications: 'notifications',
+  emergencies: 'emergencies', emergency_contacts: 'emergencyContacts',
+};
+
+const SNAKE_TO_CAMEL = {
+  caregiver_id: 'caregiverId', linked_user_id: 'linkedUserId', profile_id: 'profileId',
+  medication_id: 'medicationId', scheduled_time: 'scheduledTime', taken_at: 'takenAt',
+  confirmed_by: 'confirmedBy', changed_by: 'changedBy', doctor_name: 'doctorName',
+  record_type: 'recordType', value_data: 'valueData', measured_at: 'measuredAt',
+  recorded_by: 'recordedBy', is_read: 'isRead', fcm_token: 'fcmToken',
+  created_at: 'createdAt', birth_date: 'birthDate', invite_code: 'inviteCode',
+  is_active: 'isActive', end_date: 'endDate', stock_total: 'stockTotal',
+  stock_refill_date: 'stockRefillDate', user_id: 'userId',
+};
+
+async function syncFromPg(table, ...columns) {
+  try {
+    const result = await pgPool.query(`SELECT * FROM ${table} ORDER BY created_at DESC`);
+    if (result.rows.length === 0) return;
+    const items = result.rows.map(row => {
+      const obj = {};
+      for (const col of columns) {
+        const jsKey = SNAKE_TO_CAMEL[col] || col;
+        obj[jsKey] = row[col] !== null && row[col] !== undefined ? row[col] : '';
+      }
+      return obj;
+    });
+    const key = TABLE_TO_KEY[table] || table;
+    db.data[key] = items;
+    console.log(`  📥 ${table}: ${items.length} kayıt senkronize edildi`);
+  } catch (e) {
+    console.log(`  ⚠️ ${table} senkronizasyon hatası: ${e.message}`);
+  }
 }
 
 // Sync wrapper: writes to JSON + PostgreSQL
