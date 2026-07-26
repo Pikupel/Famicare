@@ -23,8 +23,21 @@ import dashboardRoutes from './routes/dashboard.js';
 const app = express();
 const PORT = process.env.PORT || 3001;
 
-app.use(cors());
-app.use(express.json());
+const allowedOrigins = (process.env.CORS_ORIGINS || '').split(',').map(value => value.trim()).filter(Boolean);
+app.use(cors({
+  origin(origin, callback) {
+    if (!origin || !allowedOrigins.length || allowedOrigins.includes(origin)) return callback(null, true);
+    callback(new Error('CORS origin reddedildi'));
+  },
+}));
+app.use(express.json({ limit: '100kb' }));
+app.disable('x-powered-by');
+app.use((req, res, next) => {
+  res.setHeader('X-Content-Type-Options', 'nosniff');
+  res.setHeader('X-Frame-Options', 'DENY');
+  res.setHeader('Referrer-Policy', 'no-referrer');
+  next();
+});
 
 app.use('/api/v1/auth', authRoutes);
 app.use('/api/v1/profiles', profileRoutes);
@@ -37,7 +50,11 @@ app.use('/api/v1/reports', reportRoutes);
 app.use('/api/v1/admin', adminRoutes);
 app.use('/api/v1/drugs', drugRoutes);
 app.use('/api/v1/me', meRoutes);
-app.use('/admin', express.static(join(__dirname, 'admin')));
+app.use('/admin', (req, res, next) => {
+  res.setHeader('Content-Security-Policy', "default-src 'self'; style-src 'self' 'unsafe-inline'; script-src 'self' 'unsafe-inline'; object-src 'none'; base-uri 'none'; frame-ancestors 'none'");
+  res.setHeader('Cache-Control', 'no-store');
+  next();
+}, express.static(join(__dirname, 'admin')));
 app.use('/api/v1/emergency-contacts', emergencyContactRoutes);
 app.use('/api/v1/notifications', notificationRoutes);
 app.use('/api/v1/dashboard', dashboardRoutes);

@@ -26,7 +26,7 @@ export default function AddAppointmentScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const userId = useAuthStore((s) => s.userId);
-  const { id, editTitle, editLocation, editDoctor, editDate, editTime } = useLocalSearchParams();
+  const { id, profileId, editTitle, editLocation, editDoctor, editDate, editTime, editNotes } = useLocalSearchParams();
   const isEdit = !!id;
 
   const [title, setTitle] = useState(String(editTitle || ''));
@@ -34,13 +34,19 @@ export default function AddAppointmentScreen() {
   const [doctorName, setDoctorName] = useState(String(editDoctor || ''));
   const [date, setDate] = useState(String(editDate || ''));
   const [time, setTime] = useState(String(editTime || ''));
-  const [notes, setNotes] = useState('');
+  const [notes, setNotes] = useState(String(editNotes || ''));
   const [saving, setSaving] = useState(false);
 
   const allFilled = title.trim() && date.length === 10 && time.length === 5;
 
   const save = async () => {
     if (!allFilled) { Alert.alert('Uyarı', 'Tüm alanları doldurun'); return; }
+    const [checkDay, checkMonth, checkYear] = date.split('.').map(Number);
+    const [checkHour, checkMinute] = time.split(':').map(Number);
+    const candidate = new Date(checkYear, checkMonth - 1, checkDay, checkHour, checkMinute);
+    if (candidate.getFullYear() !== checkYear || candidate.getMonth() !== checkMonth - 1 || candidate.getDate() !== checkDay || checkHour > 23 || checkMinute > 59) {
+      Alert.alert('Uyarı', 'Geçerli bir tarih ve saat girin'); return;
+    }
     setSaving(true);
     try {
       const [d, m, y] = date.split('.');
@@ -48,7 +54,7 @@ export default function AddAppointmentScreen() {
       if (isEdit) {
         await api.put(`/appointments/${id}`, { title, location, doctorName, date: isoDate, time, notes });
       } else {
-        await api.post('/appointments', { profileId: userId, title, location, doctorName, date: isoDate, time, notes });
+        await api.post('/appointments', { profileId: String(profileId || userId), title, location, doctorName, date: isoDate, time, notes });
       }
       Alert.alert('Başarılı', isEdit ? 'Güncellendi' : 'Eklendi');
       router.back();

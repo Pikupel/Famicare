@@ -28,10 +28,10 @@ export default function ReviewScreen() {
     }).catch(() => {}).finally(() => setLoading(false));
   }, []));
 
-  const markTaken = async (logId: string, medName: string) => {
+  const markTaken = async (log: any, medName: string) => {
     try {
-      await api.post(`/medications/${logId}/log`, { status: 'caregiver_marked', confirmedBy: 'caregiver', caregiverOverride: true });
-      setProfiles(prev => prev.map(p => ({ ...p, pending: p.pending.filter((l: any) => l.id !== logId) })));
+      await api.post(`/medications/${log.medicationId}/log`, { status: 'caregiver_marked', scheduledTime: log.scheduledTime, caregiverOverride: true });
+      setProfiles(prev => prev.map(p => ({ ...p, pending: p.pending.filter((l: any) => l.id !== log.id) })));
       Alert.alert('✅ İşaretlendi', `${medName} bakıcı tarafından alındı olarak işaretlendi.`);
     } catch { Alert.alert('Hata', 'İşaretlenemedi'); }
   };
@@ -64,7 +64,7 @@ export default function ReviewScreen() {
                   <Text style={{ ...typography.body, fontWeight: '600', color: colors.text }}>{log.medication?.name || 'Bilinmeyen'}</Text>
                   <Text style={{ ...typography.caption, color: colors.textSecondary }}>⏰ {log.scheduledTime} • Durum: Yanıtsız</Text>
                 </View>
-                <TouchableOpacity style={styles.actionBtn} onPress={() => markTaken(log.id, log.medication?.name || '')}>
+                <TouchableOpacity style={styles.actionBtn} onPress={() => markTaken(log, log.medication?.name || '')}>
                   <Text style={{ ...typography.small, color: '#FFF', fontWeight: '600' }}>✅ Alındı</Text>
                 </TouchableOpacity>
               </View>

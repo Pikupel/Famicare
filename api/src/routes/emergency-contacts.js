@@ -22,7 +22,9 @@ router.post('/', async (req, res) => {
 
 router.delete('/:id', async (req, res) => {
   if (db.data.emergencyContacts) {
-    db.data.emergencyContacts = db.data.emergencyContacts.filter(c => c.id !== req.params.id);
+    const exists = db.data.emergencyContacts.some(c => c.id === req.params.id && c.userId === req.user.id);
+    if (!exists) return res.status(404).json({ error: 'Kişi bulunamadı' });
+    db.data.emergencyContacts = db.data.emergencyContacts.filter(c => !(c.id === req.params.id && c.userId === req.user.id));
     await db.write();
   }
   res.json({ success: true });

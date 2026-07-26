@@ -1,4 +1,4 @@
-import XLSX from 'xlsx';
+import ExcelJS from 'exceljs';
 import { join, dirname } from 'path';
 import { fileURLToPath } from 'url';
 import fs from 'fs';
@@ -13,13 +13,14 @@ if (files.length === 0) { console.error('❌ Excel bulunamadı'); process.exit(1
 const FILE = join(DATA_DIR, files[0]);
 console.log(`📄 ${files[0]}`);
 
-const workbook = XLSX.readFile(FILE);
+const workbook = new ExcelJS.Workbook();
+await workbook.xlsx.readFile(FILE);
 
 function parseSheet(sheetName, durum) {
-  const sheet = workbook.Sheets[sheetName];
+  const sheet = workbook.getWorksheet(sheetName);
   if (!sheet) { console.log(`  ⏭️ ${sheetName} bulunamadı`); return []; }
-  const raw = XLSX.utils.sheet_to_json(sheet, { defval: '', header: 1 });
-  // Skip first 2 rows (title + column headers)
+  const raw = [];
+  sheet.eachRow({ includeEmpty: false }, row => raw.push(row.values.slice(1)));
   const rows = raw.slice(2).filter(r => r[0] && String(r[0]).trim());
   console.log(`  📊 ${sheetName}: ${rows.length} satır`);
   return rows.map(r => ({

@@ -12,11 +12,12 @@ const defaultData = {
   users: [], profiles: [], medications: [], medicationLogs: [],
   appointments: [], healthRecords: [], emergencies: [],
   emergencyContacts: [], notifications: [], drugReferences: [],
-  lastImportDate: '',
+  lastImportDate: '', inviteAttempts: {}, adminAuditLogs: [], adminBackups: [],
 };
 
 const adapter = new JSONFile(file);
 const db = new Low(adapter, defaultData);
+const writeJson = db.write.bind(db);
 
 let pgPool = null;
 
@@ -39,7 +40,7 @@ export async function initDb() {
 
 async function migratePg() {
   await pgPool.query(`
-    CREATE TABLE IF NOT EXISTS users (id TEXT PRIMARY KEY, phone TEXT, name TEXT, role TEXT, fcm_token TEXT, created_at TIMESTAMPTZ DEFAULT NOW());
+    CREATE TABLE IF NOT EXISTS users (id TEXT PRIMARY KEY, phone TEXT, name TEXT, role TEXT, fcm_token TEXT, pin_hash TEXT, timezone TEXT, created_at TIMESTAMPTZ DEFAULT NOW());
     CREATE TABLE IF NOT EXISTS profiles (id TEXT PRIMARY KEY, caregiver_id TEXT, name TEXT, birth_date TEXT, relationship TEXT, phone TEXT, invite_code TEXT, linked_user_id TEXT, is_active BOOLEAN DEFAULT true, created_at TIMESTAMPTZ DEFAULT NOW());
     CREATE TABLE IF NOT EXISTS medications (id TEXT PRIMARY KEY, profile_id TEXT, name TEXT, dosage TEXT, instructions TEXT, times TEXT, end_date TEXT, purpose TEXT, stock_total INT, is_active BOOLEAN DEFAULT true, created_at TIMESTAMPTZ DEFAULT NOW());
     CREATE TABLE IF NOT EXISTS medication_logs (id TEXT PRIMARY KEY, medication_id TEXT, profile_id TEXT, scheduled_time TEXT, date TEXT, status TEXT, taken_at TIMESTAMPTZ, confirmed_by TEXT, changed_by TEXT);
@@ -48,7 +49,15 @@ async function migratePg() {
     CREATE TABLE IF NOT EXISTS notifications (id TEXT PRIMARY KEY, user_id TEXT, type TEXT, title TEXT, body TEXT, is_read BOOLEAN DEFAULT false, created_at TIMESTAMPTZ DEFAULT NOW());
     CREATE TABLE IF NOT EXISTS emergencies (id TEXT PRIMARY KEY, profile_id TEXT, status TEXT, created_at TIMESTAMPTZ DEFAULT NOW());
     CREATE TABLE IF NOT EXISTS emergency_contacts (id TEXT PRIMARY KEY, user_id TEXT, name TEXT, phone TEXT, relationship TEXT);
+    CREATE TABLE IF NOT EXISTS app_state (id TEXT PRIMARY KEY, data JSONB NOT NULL, updated_at TIMESTAMPTZ DEFAULT NOW());
   `);
+
+  const state = await pgPool.query(`SELECT data FROM app_state WHERE id = 'primary'`);
+  if (state.rows[0]?.data) {
+    db.data = { ...defaultData, ...state.rows[0].data };
+    await writeJson();
+    return;
+  }
 
   // Sync FROM PostgreSQL TO JSON (PostgreSQL is source of truth when available)
   await syncFromPg('users', 'id', 'phone', 'name', 'role', 'fcm_token');
@@ -58,8 +67,23 @@ async function migratePg() {
   await syncFromPg('appointments', 'id', 'profile_id', 'title', 'location', 'doctor_name', 'date', 'time', 'notes', 'status');
   await syncFromPg('health_records', 'id', 'profile_id', 'record_type', 'value_data', 'measured_at', 'recorded_by');
   await syncFromPg('notifications', 'id', 'user_id', 'type', 'title', 'body', 'is_read');
+  await persistSnapshot();
   console.log('📦 PostgreSQL → JSON senkronizasyon tamam');
 }
+
+async function persistSnapshot() {
+  if (!pgPool) return;
+  await pgPool.query(
+    `INSERT INTO app_state (id, data, updated_at) VALUES ('primary', $1::jsonb, NOW())
+     ON CONFLICT (id) DO UPDATE SET data = EXCLUDED.data, updated_at = NOW()`,
+    [JSON.stringify(db.data)]
+  );
+}
+
+db.write = async function writeAll() {
+  await writeJson();
+  if (pgPool) await persistSnapshot();
+};
 
 const TABLE_TO_KEY = {
   users: 'users', profiles: 'profiles', medications: 'medications',

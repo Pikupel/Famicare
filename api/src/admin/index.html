@@ -1,180 +1,324 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="tr">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Famicare Admin</title>
-<style>
-* { margin:0; padding:0; box-sizing:border-box; }
-body { font-family:system-ui,-apple-system,sans-serif; background:#f8f9ff; color:#0b1c30; }
-.header { background:#00685f; color:white; padding:16px 24px; display:flex; justify-content:space-between; align-items:center; }
-.header h1 { font-size:20px; }
-.container { max-width:1200px; margin:0 auto; padding:24px; }
-.card { background:white; border-radius:12px; padding:20px; margin-bottom:16px; box-shadow:0 2px 8px rgba(0,0,0,0.06); }
-.grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(140px,1fr)); gap:12px; }
-.stat { text-align:center; padding:16px; }
-.stat-value { font-size:28px; font-weight:700; color:#00685f; }
-.stat-label { font-size:12px; color:#64748b; margin-top:4px; }
-table { width:100%; border-collapse:collapse; font-size:14px; }
-th,td { text-align:left; padding:10px 8px; border-bottom:1px solid #e2e8f0; }
-th { color:#64748b; font-weight:600; }
-.btn { background:#00685f; color:white; border:none; border-radius:8px; padding:10px 20px; cursor:pointer; font-size:14px; margin-right:6px; }
-.btn:hover { opacity:0.9; }
-.btn-sm { padding:4px 12px; font-size:12px; }
-.btn-danger { background:#ba1a1a; }
-.btn-warning { background:#f59e0b; }
-input,select { border:1px solid #e2e8f0; border-radius:8px; padding:8px 12px; font-size:14px; margin-bottom:12px; }
-.tab { display:inline-block; padding:8px 16px; cursor:pointer; border-bottom:2px solid transparent; color:#64748b; }
-.tab.active { border-bottom-color:#00685f; color:#00685f; font-weight:600; }
-.tab-content { display:none; }
-.tab-content.active { display:block; }
-.log { font-family:monospace; font-size:12px; background:#1e293b; color:#22c55e; padding:16px; border-radius:8px; max-height:300px; overflow-y:auto; white-space:pre-wrap; }
-.badge { display:inline-block; padding:2px 8px; border-radius:10px; font-size:11px; font-weight:600; }
-.badge-green { background:#dcfce7; color:#16a34a; }
-.badge-red { background:#fef2f2; color:#dc2626; }
-.badge-blue { background:#dbeafe; color:#2563eb; }
-</style>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Famicare Admin</title>
+  <style>
+    :root{font-family:system-ui,sans-serif;color:#172033;background:#f4f7fb}
+    *{box-sizing:border-box}body{margin:0}.hidden{display:none!important}
+    header{background:#174ea6;color:#fff;padding:18px 24px;display:flex;justify-content:space-between;align-items:center}
+    main{max-width:1180px;margin:auto;padding:20px}.card{background:#fff;border:1px solid #dfe5ef;border-radius:14px;padding:18px;margin-bottom:16px}
+    .login{max-width:420px;margin:12vh auto}.row{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+    input,button{font:inherit;min-height:44px;border-radius:9px;border:1px solid #c8d1df;padding:9px 12px}
+    input{background:#fff;min-width:180px}button{cursor:pointer;background:#174ea6;color:#fff;border:0;font-weight:650}
+    button.secondary{background:#e8eef9;color:#174ea6}button.danger{background:#b42318}button.warning{background:#9a6700}
+    button:disabled{opacity:.55;cursor:not-allowed}.tabs{display:flex;gap:8px;overflow:auto;margin-bottom:16px}
+    .tab{white-space:nowrap;background:#e8eef9;color:#174ea6}.tab.active{background:#174ea6;color:#fff}
+    .tab-panel{display:none}.tab-panel.active{display:block}.stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:12px}
+    .stat{background:#f7f9fc;border-radius:10px;padding:14px}.stat strong{font-size:24px;display:block}
+    .table-wrap{overflow:auto}table{width:100%;border-collapse:collapse;min-width:720px}th,td{text-align:left;padding:11px;border-bottom:1px solid #e5eaf2}
+    th{font-size:13px;color:#58657a}.actions{display:flex;gap:6px}.actions button{min-height:36px;padding:6px 9px}
+    #toast{position:fixed;right:18px;bottom:18px;max-width:420px;padding:12px 16px;border-radius:10px;background:#172033;color:#fff;display:none}
+    #toast.error{background:#b42318}.muted{color:#667085;font-size:14px}.danger-zone{border-color:#f1a9a2}
+    @media(max-width:640px){header{padding:14px}main{padding:12px}.card{padding:14px}}
+  </style>
 </head>
 <body>
-<div class="header"><h1>⚙️ Famicare Admin</h1><a href="#" onclick="loadAll();return false" style="color:rgba(255,255,255,0.9)">🔄 Yenile</a></div>
-<div class="container">
-  <div style="margin-bottom:16px; display:flex; gap:8px; align-items:center">
-    <input type="password" id="adminKey" placeholder="Admin anahtarı" value="famicare-admin-2026" style="margin-bottom:0; flex:1; max-width:300px" />
-    <button class="btn" onclick="loadAll()">Bağlan</button>
-  </div>
+  <section id="loginView" class="login card">
+    <h1>⚙️ Famicare Yönetim</h1>
+    <p class="muted">Kullanıcı adı, şifre ve doğrulama uygulamanızdaki 6 haneli kodla giriş yapın.</p>
+    <form id="loginForm">
+      <label for="username">Kullanıcı adı</label>
+      <input id="username" type="text" autocomplete="username" required style="width:100%;margin:8px 0 12px">
+      <label for="password">Şifre</label>
+      <input id="password" type="password" autocomplete="current-password" required style="width:100%;margin:8px 0 12px">
+      <label for="totp">2FA doğrulama kodu</label>
+      <input id="totp" type="text" inputmode="numeric" autocomplete="one-time-code" pattern="[0-9]{6}" maxlength="6" required placeholder="000000" style="width:100%;margin:8px 0 12px">
+      <button type="submit" style="width:100%">Güvenli Oturum Aç</button>
+    </form>
+  </section>
 
-  <div class="card" style="padding:8px 20px">
-    <span class="tab active" onclick="switchTab('dashboard',this)">📊 Dashboard</span>
-    <span class="tab" onclick="switchTab('users',this)">👥 Kullanıcılar</span>
-    <span class="tab" onclick="switchTab('profiles',this)">👤 Profiller</span>
-    <span class="tab" onclick="switchTab('drugs',this)">💊 İlaç Katalog</span>
-    <span class="tab" onclick="switchTab('db',this)">🗄️ Veritabanı</span>
-  </div>
+  <section id="appView" class="hidden">
+    <header><strong>⚙️ Famicare Admin</strong><div class="row"><span id="sessionTime"></span><button id="logoutBtn" class="secondary">Çıkış</button></div></header>
+    <main>
+      <nav class="tabs" aria-label="Yönetim bölümleri">
+        <button class="tab active" data-tab="dashboard">Dashboard</button>
+        <button class="tab" data-tab="users">Kullanıcılar</button>
+        <button class="tab" data-tab="profiles">Profiller</button>
+        <button class="tab" data-tab="drugs">İlaç kataloğu</button>
+        <button class="tab" data-tab="database">Veritabanı ve kayıtlar</button>
+      </nav>
 
-  <div id="tab-dashboard" class="tab-content active">
-    <div class="card"><div class="grid" id="statsGrid"></div></div>
-    <div class="card" style="display:flex; gap:8px; flex-wrap:wrap">
-      <button class="btn" onclick="importDrugs()">📥 TİTCK Import</button>
-      <button class="btn" onclick="matchRxNav()">🔗 RxNav Eşleştir</button>
-      <button class="btn btn-warning" onclick="testPush()">🔔 Test Push</button>
-      <button class="btn btn-danger" onclick="clearAll()">🗑️ Tüm Veriyi Temizle</button>
-      <div id="actionLog" class="log" style="margin-top:12px; width:100%">Hazır</div>
-    </div>
-  </div>
+      <section id="dashboard" class="tab-panel active">
+        <div id="stats" class="stats"></div>
+        <div class="card">
+          <h2>Bakım işlemleri</h2>
+          <div class="row">
+            <button id="refreshBtn">Verileri yenile</button>
+            <button id="rxNavBtn" class="secondary">50 ilacı RxNav ile eşleştir</button>
+            <button disabled title="Yalnızca kontrollü build işlemi sırasında kullanılabilir">TİTCK içe aktarma devre dışı</button>
+          </div>
+        </div>
+      </section>
 
-  <div id="tab-users" class="tab-content">
-    <div class="card"><div style="overflow-x:auto"><table><thead><tr><th>Ad</th><th>Telefon</th><th>Rol</th><th>Kayıt</th><th>İşlem</th></tr></thead><tbody id="usersTable"></tbody></table></div></div>
-  </div>
+      <section id="users" class="tab-panel">
+        <div class="card"><h2>Kullanıcılar</h2><div class="table-wrap"><table><thead><tr><th>Ad</th><th>Telefon</th><th>Rol</th><th>Kayıt</th><th>İşlemler</th></tr></thead><tbody id="usersBody"></tbody></table></div></div>
+      </section>
 
-  <div id="tab-profiles" class="tab-content">
-    <div class="card"><div style="overflow-x:auto"><table><thead><tr><th>Ad</th><th>Caregiver</th><th>Bağlantı</th><th>Kod</th><th>İşlem</th></tr></thead><tbody id="profilesTable"></tbody></table></div></div>
-  </div>
+      <section id="profiles" class="tab-panel">
+        <div class="card"><h2>Profiller</h2><div class="table-wrap"><table><thead><tr><th>Ad</th><th>Bakıcı</th><th>Bağlantı</th><th>Davet kodu</th><th>İşlemler</th></tr></thead><tbody id="profilesBody"></tbody></table></div></div>
+      </section>
 
-  <div id="tab-drugs" class="tab-content">
-    <div class="card">
-      <input type="text" id="drugSearch" placeholder="İlaç ara..." oninput="searchDrugs()" style="width:100%" />
-      <div style="overflow-x:auto; margin-top:12px"><table><thead><tr><th>İlaç</th><th>Barkod</th><th>ATC</th><th>Durum</th></tr></thead><tbody id="drugsTable"></tbody></table></div>
-    </div>
-  </div>
+      <section id="drugs" class="tab-panel">
+        <div class="card">
+          <h2>İlaç kataloğu</h2>
+          <label for="drugSearch">İlaç adı</label>
+          <input id="drugSearch" type="search" placeholder="En az 2 karakter" style="width:100%;margin:8px 0 12px">
+          <div class="table-wrap"><table><thead><tr><th>İlaç</th><th>Barkod</th><th>ATC</th><th>Durum</th></tr></thead><tbody id="drugsBody"></tbody></table></div>
+        </div>
+      </section>
 
-  <div id="tab-db" class="tab-content">
-    <div class="card">
-      <p style="margin-bottom:12px; color:#64748b; font-size:14px">Veritabanı: <strong id="dbStatus">JSON</strong></p>
-      <p style="margin-bottom:12px; color:#64748b; font-size:14px">İlaç sayısı: <strong id="drugCount">0</strong></p>
-      <p style="color:#64748b; font-size:14px">Son import: <strong id="lastImport">-</strong></p>
-    </div>
-  </div>
-</div>
+      <section id="database" class="tab-panel">
+        <div class="card"><h2>Yedekler</h2><div id="backups"></div></div>
+        <div class="card"><h2>Yönetici işlem günlüğü</h2><div class="table-wrap"><table><thead><tr><th>Zaman</th><th>İşlem</th><th>Kaynak</th><th>Kimlik</th></tr></thead><tbody id="auditBody"></tbody></table></div></div>
+        <div class="card danger-zone"><h2>Tehlikeli bölge</h2><p class="muted">İşlemden önce otomatik yedek oluşturulur. Geri yükleme yine açık onay gerektirir.</p><button id="clearBtn" class="danger">Tüm kullanıcı verilerini temizle</button></div>
+      </section>
+    </main>
+  </section>
+  <div id="toast" role="status" aria-live="polite"></div>
 
-<script>
-const BASE = window.location.origin + '/api/v1/admin';
-function key() { return document.getElementById('adminKey').value; }
-function h() { return { 'Content-Type':'application/json', 'x-admin-key':key() }; }
-async function api(path, opts={}) {
-  const r = await fetch(BASE+path, {...opts, headers:{...h(),...opts.headers}});
-  if(!r.ok) { const e=await r.json(); throw new Error(e.error||'Hata'); }
-  return r.json();
-}
-function switchTab(name,el) {
-  document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));
-  document.querySelectorAll('.tab-content').forEach(t=>t.classList.remove('active'));
-  el.classList.add('active');
-  document.getElementById('tab-'+name).classList.add('active');
-  if(name==='users') loadUsers();
-  if(name==='profiles') loadProfiles();
-}
+  <script>
+    'use strict';
+    const BASE = `${location.origin}/api/v1`;
+    let sessionToken = '';
+    let expiresAt = 0;
+    let usersCache = [];
+    const byId = id => document.getElementById(id);
 
-async function loadAll() {
-  try {
-    const s = await api('/stats');
-    document.getElementById('statsGrid').innerHTML = `
-      <div class="stat"><div class="stat-value">${s.users}</div><div class="stat-label">Kullanıcı</div></div>
-      <div class="stat"><div class="stat-value">${s.medications}</div><div class="stat-label">İlaç Kaydı</div></div>
-      <div class="stat"><div class="stat-value">${s.activeDrugs}</div><div class="stat-label">Aktif İlaç</div></div>
-      <div class="stat"><div class="stat-value">${s.totalDrugs}</div><div class="stat-label">Toplam İlaç</div></div>
-      <div class="stat"><div class="stat-value">${s.healthRecords}</div><div class="stat-label">Sağlık</div></div>
-      <div class="stat"><div class="stat-value">${s.appointments}</div><div class="stat-label">Randevu</div></div>
-      <div class="stat"><div class="stat-value">${s.notifications}</div><div class="stat-label">Bildirim</div></div>
-      <div class="stat"><div class="stat-value">${s.lastImport ? new Date(s.lastImport).toLocaleDateString('tr-TR') : '-'}</div><div class="stat-label">Son İmport</div></div>`;
-    document.getElementById('drugCount').textContent = s.totalDrugs;
-    document.getElementById('lastImport').textContent = s.lastImport ? new Date(s.lastImport).toLocaleString('tr-TR') : '-';
-    document.getElementById('dbStatus').textContent = s.pgConnected ? 'PostgreSQL ✅' : 'JSON ⚠️';
-    log('✅ Veriler yüklendi');
-  } catch(e) { log('❌ Hata: '+e.message); }
-}
+    function toast(message, error = false) {
+      const box = byId('toast');
+      box.textContent = message;
+      box.className = error ? 'error' : '';
+      box.style.display = 'block';
+      setTimeout(() => { box.style.display = 'none'; }, 4500);
+    }
 
-async function loadUsers() {
-  try {
-    const u = await api('/users');
-    document.getElementById('usersTable').innerHTML = u.map(x => `<tr><td><strong>${x.name}</strong></td><td>${x.phone||'-'}</td><td><span class="badge ${x.role==='caregiver'?'badge-blue':'badge-green'}">${x.role}</span></td><td>${new Date(x.createdAt).toLocaleDateString('tr-TR')}</td><td><button class="btn btn-sm btn-danger" onclick="deleteUser('${x.id}','${x.name.replace(/'/g,"\\'")}')">🗑</button></td></tr>`).join('');
-  } catch(e) { log('❌ Kullanıcılar yüklenemedi: '+e.message); }
-}
+    async function request(path, options = {}) {
+      const response = await fetch(`${BASE}${path}`, {
+        ...options,
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${sessionToken}`, ...(options.headers || {}) },
+      });
+      const data = await response.json().catch(() => ({}));
+      if (response.status === 401) { logout(); throw new Error('Oturum süresi doldu'); }
+      if (!response.ok) throw new Error(data.error || `HTTP ${response.status}`);
+      return data;
+    }
 
-async function loadProfiles() {
-  try {
-    const p = await api('/profiles');
-    document.getElementById('profilesTable').innerHTML = p.map(x => `<tr><td><strong>${x.name}</strong></td><td style="font-size:11px;color:#64748b">${(x.caregiverId||'').slice(0,8)}...</td><td>${x.linkedUserId ? '✅ Bağlı' : '❌ Boş'}</td><td style="font-size:12px">${x.inviteCode||'-'}</td><td><button class="btn btn-sm btn-danger" onclick="deleteProfile('${x.id}','${x.name.replace(/'/g,"\\'")}')">🗑</button></td></tr>`).join('');
-  } catch(e) { log('❌ Profiller yüklenemedi: '+e.message); }
-}
+    function cell(row, value) {
+      const td = document.createElement('td');
+      td.textContent = value == null || value === '' ? '-' : String(value);
+      row.appendChild(td);
+      return td;
+    }
 
-async function searchDrugs() {
-  const q = document.getElementById('drugSearch').value;
-  if(q.length < 2) { document.getElementById('drugsTable').innerHTML = ''; return; }
-  try {
-    const d = await fetch(window.location.origin + '/api/v1/drugs/search?q='+encodeURIComponent(q), { headers: h() }).then(r=>r.json());
-    document.getElementById('drugsTable').innerHTML = d.slice(0,50).map(x => `<tr><td><strong>${x.ilac_adi}</strong></td><td style="font-size:11px">${x.barkod}</td><td style="font-size:11px">${x.atc_kodu||'-'}</td><td><span class="badge ${x.durum==='aktif'?'badge-green':'badge-red'}">${x.durum}</span></td></tr>`).join('');
-  } catch {}
-}
+    function actionButton(label, className, handler) {
+      const button = document.createElement('button');
+      button.type = 'button'; button.textContent = label; button.className = className || '';
+      button.addEventListener('click', handler);
+      return button;
+    }
 
-async function deleteUser(id, name) {
-  if(!confirm('"' + name + '" ve tüm verileri silinsin mi?')) return;
-  try { await api('/users/'+id, {method:'DELETE'}); loadUsers(); log('✅ "'+name+'" silindi'); } catch(e) { log('❌ '+e.message); }
-}
-async function deleteProfile(id, name) {
-  if(!confirm('"' + name + '" silinsin mi?')) return;
-  try { await api('/profiles/'+id, {method:'DELETE'}); loadProfiles(); log('✅ "'+name+'" silindi'); } catch(e) { log('❌ '+e.message); }
-}
-async function importDrugs() {
-  log('⏳ TİTCK import başlatılıyor...');
-  try { const r = await api('/import-drugs', {method:'POST'}); log('✅ '+(r.message||'Tamam')); loadAll(); } catch(e) { log('❌ '+e.message); }
-}
-async function matchRxNav() {
-  log('⏳ RxNav eşleştirme...');
-  try { const r = await api('/match-rxnav', {method:'POST'}); log(`✅ Eşleşen: ${r.matched}, Başarısız: ${r.failed}, Kalan: ${r.remaining}`); } catch(e) { log('❌ '+e.message); }
-}
-async function testPush() {
-  log('⏳ Test push gönderiliyor...');
-  try { const r = await api('/test-push', {method:'POST'}); log('✅ Test push sonucu: '+JSON.stringify(r.results)); } catch(e) { log('❌ '+e.message); }
-}
-async function clearAll() {
-  if(!confirm('Tüm kullanıcı, profil, ilaç, randevu ve sağlık verileri silinsin mi?')) return;
-  try { await api('/clear-all', {method:'POST'}); loadAll(); log('✅ Tüm veri temizlendi'); } catch(e) { log('❌ '+e.message); }
-}
-function log(m) {
-  const el = document.getElementById('actionLog');
-  el.textContent += '\n['+new Date().toLocaleTimeString('tr-TR')+'] '+m;
-  el.scrollTop = el.scrollHeight;
-}
-</script>
+    async function login(event) {
+      event.preventDefault();
+      try {
+        const username = byId('username').value.trim();
+        const password = byId('password').value;
+        const totp = byId('totp').value.replace(/\D/g, '');
+        const response = await fetch(`${BASE}/admin/session`, {
+          method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ username, password, totp }),
+        });
+        const data = await response.json().catch(() => ({}));
+        byId('password').value = '';
+        byId('totp').value = '';
+        if (!response.ok) throw new Error(data.error || 'Oturum açılamadı');
+        sessionToken = data.token; expiresAt = Date.now() + data.expiresIn * 1000;
+        byId('loginView').classList.add('hidden'); byId('appView').classList.remove('hidden');
+        await loadDashboard();
+      } catch (error) { toast(error.message, true); }
+    }
+
+    function logout() {
+      sessionToken = ''; expiresAt = 0; usersCache = [];
+      byId('appView').classList.add('hidden'); byId('loginView').classList.remove('hidden');
+    }
+
+    async function loadDashboard() {
+      try {
+        const stats = await request('/admin/stats');
+        const values = [
+          ['Kullanıcı', stats.users], ['Profil', stats.profiles], ['İlaç kaydı', stats.medications],
+          ['Sağlık ölçümü', stats.healthRecords], ['Randevu', stats.appointments],
+          ['Aktif katalog', stats.activeDrugs], ['Toplam katalog', stats.totalDrugs],
+          ['Veritabanı', stats.pgConnected ? 'PostgreSQL' : 'JSON'],
+        ];
+        const container = byId('stats'); container.replaceChildren();
+        for (const [label, value] of values) {
+          const item = document.createElement('div'); item.className = 'stat';
+          const strong = document.createElement('strong'); strong.textContent = value;
+          const span = document.createElement('span'); span.textContent = label;
+          item.append(strong, span); container.appendChild(item);
+        }
+      } catch (error) { toast(error.message, true); }
+    }
+
+    async function loadUsers() {
+      try {
+        usersCache = await request('/admin/users');
+        const body = byId('usersBody'); body.replaceChildren();
+        for (const user of usersCache) {
+          const row = document.createElement('tr');
+          cell(row, user.name); cell(row, user.phone); cell(row, user.role);
+          cell(row, user.createdAt ? new Date(user.createdAt).toLocaleDateString('tr-TR') : '-');
+          const actions = cell(row, ''); actions.textContent = ''; actions.className = 'actions';
+          actions.append(
+            actionButton('PIN', 'secondary', () => resetPin(user)),
+            actionButton('Push', 'warning', () => testPush(user)),
+            actionButton('Sil', 'danger', () => deleteUser(user)),
+          );
+          body.appendChild(row);
+        }
+      } catch (error) { toast(error.message, true); }
+    }
+
+    async function resetPin(user) {
+      const pin = prompt(`${user.name} için yeni 4-6 haneli PIN:`);
+      if (pin == null) return;
+      if (!/^\\d{4,6}$/.test(pin)) return toast('PIN 4-6 haneli olmalıdır', true);
+      try { await request(`/admin/users/${encodeURIComponent(user.id)}/pin`, { method:'PATCH', body:JSON.stringify({ pin }) }); toast('PIN güvenli şekilde güncellendi'); }
+      catch (error) { toast(error.message, true); }
+    }
+
+    async function testPush(user) {
+      if (!confirm(`${user.name} kullanıcısına test bildirimi gönderilsin mi?`)) return;
+      try {
+        const data = await request('/admin/test-push', { method:'POST', body:JSON.stringify({ userId:user.id }) });
+        toast(data.result?.success ? 'Bildirim gönderim kuyruğuna alındı' : `Gönderilemedi: ${data.result?.reason || 'bilinmeyen hata'}`, !data.result?.success);
+      } catch (error) { toast(error.message, true); }
+    }
+
+    async function deleteUser(user) {
+      const phrase = prompt(`${user.name} ve ilişkili verileri silmek için KULLANICIYI SİL yazın:`);
+      if (phrase !== 'KULLANICIYI SİL') return;
+      try { await request(`/admin/users/${encodeURIComponent(user.id)}`, { method:'DELETE', body:JSON.stringify({ confirmation:phrase }) }); toast('Kullanıcı silindi'); await loadUsers(); }
+      catch (error) { toast(error.message, true); }
+    }
+
+    async function loadProfiles() {
+      try {
+        const profiles = await request('/admin/profiles');
+        const body = byId('profilesBody'); body.replaceChildren();
+        for (const profile of profiles) {
+          const row = document.createElement('tr');
+          cell(row, profile.name); cell(row, (profile.caregiverId || '').slice(0, 8));
+          cell(row, profile.linkedUserId ? 'Bağlı' : 'Boş'); cell(row, profile.inviteCode);
+          const actions = cell(row, ''); actions.textContent = ''; actions.className = 'actions';
+          actions.append(actionButton('Düzenle', 'secondary', () => editProfile(profile)), actionButton('Sil', 'danger', () => deleteProfile(profile)));
+          body.appendChild(row);
+        }
+      } catch (error) { toast(error.message, true); }
+    }
+
+    async function editProfile(profile) {
+      const name = prompt('Yeni profil adı:', profile.name);
+      if (!name?.trim()) return;
+      try { await request(`/admin/profiles/${encodeURIComponent(profile.id)}`, { method:'PATCH', body:JSON.stringify({ name:name.trim() }) }); toast('Profil güncellendi'); await loadProfiles(); }
+      catch (error) { toast(error.message, true); }
+    }
+
+    async function deleteProfile(profile) {
+      const phrase = prompt(`${profile.name} profilini silmek için PROFİLİ SİL yazın:`);
+      if (phrase !== 'PROFİLİ SİL') return;
+      try { await request(`/admin/profiles/${encodeURIComponent(profile.id)}`, { method:'DELETE', body:JSON.stringify({ confirmation:phrase }) }); toast('Profil silindi'); await loadProfiles(); }
+      catch (error) { toast(error.message, true); }
+    }
+
+    let searchTimer;
+    function scheduleDrugSearch() { clearTimeout(searchTimer); searchTimer = setTimeout(searchDrugs, 300); }
+    async function searchDrugs() {
+      const query = byId('drugSearch').value.trim();
+      const body = byId('drugsBody'); body.replaceChildren();
+      if (query.length < 2) return;
+      try {
+        const drugs = await request(`/admin/drugs/search?q=${encodeURIComponent(query)}`);
+        for (const drug of drugs) {
+          const row = document.createElement('tr');
+          cell(row, drug.ilac_adi); cell(row, drug.barkod); cell(row, drug.atc_kodu); cell(row, drug.durum);
+          body.appendChild(row);
+        }
+      } catch (error) { toast(error.message, true); }
+    }
+
+    async function matchRxNav() {
+      if (!confirm('En fazla 50 ilaç RxNav ile eşleştirilsin mi?')) return;
+      try { const result = await request('/admin/match-rxnav', { method:'POST' }); toast(`Eşleşen ${result.matched}, başarısız ${result.failed}, kalan ${result.remaining}`); await loadDashboard(); }
+      catch (error) { toast(error.message, true); }
+    }
+
+    async function loadDatabase() {
+      try {
+        const [backups, logs] = await Promise.all([request('/admin/backups'), request('/admin/audit-logs')]);
+        const backupBox = byId('backups'); backupBox.replaceChildren();
+        if (!backups.length) backupBox.textContent = 'Henüz yönetici yedeği yok.';
+        for (const backup of backups) {
+          const row = document.createElement('div'); row.className = 'row';
+          const text = document.createElement('span'); text.textContent = new Date(backup.createdAt).toLocaleString('tr-TR');
+          row.append(text, actionButton('Geri yükle', 'warning', () => restoreBackup(backup))); backupBox.appendChild(row);
+        }
+        const auditBody = byId('auditBody'); auditBody.replaceChildren();
+        for (const log of logs) {
+          const row = document.createElement('tr');
+          cell(row, new Date(log.createdAt).toLocaleString('tr-TR')); cell(row, log.action); cell(row, log.resourceType); cell(row, log.resourceId);
+          auditBody.appendChild(row);
+        }
+      } catch (error) { toast(error.message, true); }
+    }
+
+    async function clearAll() {
+      const phrase = prompt('Tüm kullanıcı verilerini silmek için TÜM VERİYİ SİL yazın:');
+      if (phrase !== 'TÜM VERİYİ SİL') return;
+      try { await request('/admin/clear-all', { method:'POST', body:JSON.stringify({ confirmation:phrase }) }); toast('Veriler temizlendi; geri yüklenebilir yedek oluşturuldu'); await loadDashboard(); await loadDatabase(); }
+      catch (error) { toast(error.message, true); }
+    }
+
+    async function restoreBackup(backup) {
+      const phrase = prompt('Yedeği geri yüklemek için YEDEĞİ GERİ YÜKLE yazın:');
+      if (phrase !== 'YEDEĞİ GERİ YÜKLE') return;
+      try { await request(`/admin/backups/${encodeURIComponent(backup.id)}/restore`, { method:'POST', body:JSON.stringify({ confirmation:phrase }) }); toast('Yedek geri yüklendi'); await loadDashboard(); await loadDatabase(); }
+      catch (error) { toast(error.message, true); }
+    }
+
+    function switchTab(name, button) {
+      document.querySelectorAll('.tab').forEach(item => item.classList.toggle('active', item === button));
+      document.querySelectorAll('.tab-panel').forEach(item => item.classList.toggle('active', item.id === name));
+      if (name === 'users') loadUsers();
+      if (name === 'profiles') loadProfiles();
+      if (name === 'database') loadDatabase();
+    }
+
+    byId('loginForm').addEventListener('submit', login);
+    byId('logoutBtn').addEventListener('click', logout);
+    byId('refreshBtn').addEventListener('click', loadDashboard);
+    byId('rxNavBtn').addEventListener('click', matchRxNav);
+    byId('drugSearch').addEventListener('input', scheduleDrugSearch);
+    byId('clearBtn').addEventListener('click', clearAll);
+    document.querySelectorAll('.tab').forEach(button => button.addEventListener('click', () => switchTab(button.dataset.tab, button)));
+    setInterval(() => {
+      if (!expiresAt) return;
+      const seconds = Math.max(0, Math.ceil((expiresAt - Date.now()) / 1000));
+      byId('sessionTime').textContent = `${Math.floor(seconds / 60)}:${String(seconds % 60).padStart(2, '0')}`;
+      if (!seconds) logout();
+    }, 1000);
+  </script>
 </body>
 </html>

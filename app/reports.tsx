@@ -8,10 +8,11 @@ import { spacing, borderRadius, shadow } from '../src/theme/spacing';
 import { api } from '../src/services/api';
 import { useAuthStore } from '../src/stores/useAuthStore';
 import { Button } from '../src/components/Button';
+import { File, Paths } from 'expo-file-system';
+import * as Sharing from 'expo-sharing';
+import { BASE_URL } from '../src/services/api';
 
 const DAYS = ['Pzt', 'Sal', 'Çar', 'Per', 'Cum', 'Cmt', 'Paz'];
-const WEEK_DATA = [85, 92, 100, 88, 94, 80, 75];
-
 export default function ReportsScreen() {
   const router = useRouter();
   const params = useLocalSearchParams();
@@ -19,27 +20,53 @@ export default function ReportsScreen() {
   const userId = useAuthStore((s) => s.userId);
   const userName = useAuthStore((s) => s.userName);
   const profileName = String(params.profileName || userName || 'Kullanıcı');
+  const profileId = String(params.profileId || userId || '');
+  const token = useAuthStore((s) => s.token);
   const [logs, setLogs] = useState<any[]>([]);
   const [medications, setMedications] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [period, setPeriod] = useState<'weekly' | 'monthly'>('weekly');
 
   useFocusEffect(useCallback(() => {
-    if (!userId) { setLoading(false); return; }
+    if (!profileId) { setLoading(false); return; }
     Promise.all([
-      api.get<any[]>(`/medications/profile/${userId}`),
-      api.get<any[]>(`/medications/profile/${userId}/logs?range=90d`),
+      api.get<any[]>(`/medications/profile/${profileId}`),
+      api.get<any[]>(`/medications/profile/${profileId}/logs?range=90d`),
     ]).then(([meds, logData]) => {
       setMedications(meds);
       setLogs(logData);
     }).catch(() => {}).finally(() => setLoading(false));
-  }, [userId]));
+  }, [profileId]));
 
   const totalDoses = medications.reduce((s, m) => s + (m.times?.length || 0), 0);
   const today = new Date().toISOString().split('T')[0];
   const todayLogs = logs.filter(l => l.date === today);
   const takenToday = todayLogs.filter(l => l.status === 'taken').length;
   const avgAdherence = totalDoses > 0 ? Math.min(100, Math.round((todayLogs.filter(l => l.status === 'taken').length / totalDoses) * 100)) : 0;
+  const chartDays = period === 'weekly' ? 7 : 30;
+  const chartData = Array.from({ length: chartDays }, (_, offset) => {
+    const date = new Date();
+    date.setDate(date.getDate() - (chartDays - offset - 1));
+    const key = date.toISOString().split('T')[0];
+    const taken = logs.filter(log => log.date === key && ['taken', 'caregiver_marked'].includes(log.status)).length;
+    return { label: period === 'weekly' ? DAYS[(date.getDay() + 6) % 7] : String(date.getDate()), value: totalDoses ? Math.min(100, Math.round(taken / totalDoses * 100)) : 0 };
+  });
+
+  const sharePdf = async () => {
+    if (!token) return;
+    try {
+      const file = new File(Paths.cache, `famicare-rapor-${Date.now()}.pdf`);
+      const downloaded = await File.downloadFileAsync(
+        `${BASE_URL}/reports/adherence?profileId=${encodeURIComponent(profileId)}`,
+        file,
+        { headers: { Authorization: `Bearer ${token}` }, idempotent: true },
+      );
+      if (await Sharing.isAvailableAsync()) await Sharing.shareAsync(downloaded.uri, { mimeType: 'application/pdf', dialogTitle: `${profileName} sağlık raporu` });
+      else Alert.alert('Rapor Hazır', downloaded.uri);
+    } catch (error: any) {
+      Alert.alert('Hata', error?.message || 'PDF raporu oluşturulamadı');
+    }
+  };
 
   if (loading) return <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: colors.background }}>
     <ActivityIndicator size="large" color={colors.primary} />
@@ -65,11 +92,11 @@ export default function ReportsScreen() {
           </View>
 
           <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-end', height: 140, paddingBottom: 24 }}>
-            {WEEK_DATA.map((val, i) => (
+            {chartData.map(({ value: val, label }, i) => (
               <View key={i} style={{ alignItems: 'center', flex: 1 }}>
                 <Text style={{ ...typography.small, color: colors.textSecondary, fontSize: 10, marginBottom: 4 }}>%{val}</Text>
                 <View style={{ width: 24, height: (val / 100) * 100, backgroundColor: val === 100 ? colors.primary : colors.primaryLight, borderRadius: 6, opacity: 0.6 + (val / 100) * 0.4 }} />
-                <Text style={{ ...typography.small, color: colors.textLight, marginTop: spacing.xs, fontSize: 10 }}>{DAYS[i]}</Text>
+                <Text style={{ ...typography.small, color: colors.textLight, marginTop: spacing.xs, fontSize: 9 }}>{label}</Text>
               </View>
             ))}
           </View>
@@ -90,7 +117,7 @@ export default function ReportsScreen() {
           </View>
         </View>
 
-        <Button title={`📄 ${profileName} - Uyum Raporu (PDF)`} variant="outline" onPress={() => Alert.alert('PDF Raporu', `${profileName} için PDF rapor özelliği yakında eklenecek.`) } style={{ marginBottom: spacing.xxl }} />
+        <Button title={`📄 ${profileName} - Uyum Raporu (PDF)`} variant="outline" onPress={sharePdf} style={{ marginBottom: spacing.xxl }} />
       </ScrollView>
     </View>
   );

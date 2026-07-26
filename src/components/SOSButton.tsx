@@ -10,7 +10,7 @@ export function SOSButton() {
     Alert.alert('🆘 Yardım', 'Acil durum bildirimi gönderilecek.', [
       { text: 'İptal', style: 'cancel' },
       { text: 'GÖNDER', style: 'destructive', onPress: async () => {
-        try { await api.post('/emergency', { profileId: userId }); Alert.alert('✅ Gönderildi', 'Yakınlarınıza haber verildi.'); }
+        try { await api.post('/emergency', { profileId: userId }); Alert.alert('✅ Gönderildi', 'Bağlı yakınınıza uygulama bildirimi gönderildi. Acil ve hayati durumlarda ayrıca 112’yi arayın.'); }
         catch { Alert.alert('❌ Hata', 'Gönderilemedi. 112\'yi arayın.'); }
       }},
     ]);

@@ -15,7 +15,7 @@ export default function AddHealthScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const userId = useAuthStore((s) => s.userId);
-  const { id, editType, editSystolic, editDiastolic, editSugar, editWeight } = useLocalSearchParams();
+  const { id, profileId, editType, editSystolic, editDiastolic, editSugar, editWeight } = useLocalSearchParams();
   const isEdit = !!id;
 
   const [type, setType] = useState<MeasureType>((editType as MeasureType) || 'blood_pressure');
@@ -26,6 +26,16 @@ export default function AddHealthScreen() {
   const [saving, setSaving] = useState(false);
 
   const save = async () => {
+    const sys = Number(systolic), dia = Number(diastolic), glucose = Number(sugar), kg = Number(weight);
+    if (type === 'blood_pressure' && (sys < 50 || sys > 260 || dia < 30 || dia > 160 || sys <= dia)) {
+      Alert.alert('Geçersiz Değer', 'Tansiyon değerlerini kontrol edin.'); return;
+    }
+    if (type === 'blood_sugar' && (glucose < 20 || glucose > 700)) {
+      Alert.alert('Geçersiz Değer', 'Kan şekeri 20–700 mg/dL arasında olmalıdır.'); return;
+    }
+    if (type === 'weight' && (kg < 2 || kg > 500)) {
+      Alert.alert('Geçersiz Değer', 'Kilo 2–500 kg arasında olmalıdır.'); return;
+    }
     setSaving(true);
     try {
       const valueData: any = {};
@@ -35,7 +45,7 @@ export default function AddHealthScreen() {
       if (isEdit) {
         await api.patch(`/health/${id}`, { valueData });
       } else {
-        await api.post('/health', { profileId: userId, recordType: type, valueData });
+        await api.post('/health', { profileId: String(profileId || userId), recordType: type, valueData });
       }
       Alert.alert('Başarılı', isEdit ? 'Ölçüm güncellendi' : 'Ölçüm kaydedildi');
       router.back();

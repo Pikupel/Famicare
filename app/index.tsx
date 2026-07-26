@@ -1,7 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { View, Text, StyleSheet, FlatList, Dimensions, TouchableOpacity } from 'react-native';
 import { useRouter } from 'expo-router';
-import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useAuthStore } from '../src/stores/useAuthStore';
 import { colors } from '../src/theme/colors';
 import { typography } from '../src/theme/typography';
@@ -22,17 +21,20 @@ export default function OnboardingScreen() {
   const flatRef = useRef<FlatList>(null);
 
   useEffect(() => {
-    AsyncStorage.getItem('famicare_session').then(session => {
-      if (session === 'true') {
-        const { isLoggedIn, role } = useAuthStore.getState();
-        if (isLoggedIn && role) {
-          router.replace(role === 'caregiver' ? '/caregiver' : '/home');
-          return;
-        }
+    const unsubscribe = useAuthStore.persist.onFinishHydration(state => {
+      if (state.isLoggedIn && state.role) {
+        router.replace(state.role === 'caregiver' ? '/caregiver' : '/home');
+      } else {
+        setReady(true);
       }
-      setReady(true);
-    }).catch(() => setReady(true));
-  }, []);
+    });
+    if (useAuthStore.persist.hasHydrated()) {
+      const state = useAuthStore.getState();
+      if (state.isLoggedIn && state.role) router.replace(state.role === 'caregiver' ? '/caregiver' : '/home');
+      else setReady(true);
+    }
+    return unsubscribe;
+  }, [router]);
 
   if (!ready) return null;
 

@@ -4,13 +4,7 @@ import { authMiddleware } from '../middleware/auth.js';
 
 const router = Router();
 
-function allowAdminOrUser(req, res, next) {
-  const adminKey = req.headers['x-admin-key'];
-  if (adminKey === (process.env.ADMIN_KEY || 'famicare-admin-2026')) return next();
-  authMiddleware(req, res, next);
-}
-
-router.use(allowAdminOrUser);
+router.use(authMiddleware);
 
 const RXNAV_BASE = 'https://rxnav.nlm.nih.gov/REST';
 

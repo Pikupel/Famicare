@@ -31,6 +31,9 @@ export default function AddMedicationScreen() {
   const save = async () => {
     if (!name.trim()) { Alert.alert('Uyarı', 'İlaç adı gerekli'); return; }
     if (name.trim().length < 2) { Alert.alert('Uyarı', 'İlaç adı en az 2 karakter olmalıdır'); return; }
+    if (!times.length || times.some(t => !/^(?:[01]\d|2[0-3]):[0-5]\d$/.test(t))) {
+      Alert.alert('Uyarı', 'Saatleri SS:DD biçiminde ve geçerli aralıkta girin'); return;
+    }
     setSaving(true);
     const targetProfileId = profileId || userId || 'default';
     try {

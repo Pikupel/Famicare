@@ -1,6 +1,6 @@
 import { create } from 'zustand';
 import { persist, createJSONStorage } from 'zustand/middleware';
-import AsyncStorage from '@react-native-async-storage/async-storage';
+import * as SecureStore from 'expo-secure-store';
 
 type Role = 'caregiver' | 'elderly' | null;
 
@@ -23,6 +23,13 @@ export const useAuthStore = create<AuthState>()(
       login: (name, token, userId, role) => set({ isLoggedIn: true, userName: name, token, userId, role }),
       logout: () => set({ isLoggedIn: false, role: null, userName: '', userId: '', token: null }),
     }),
-    { name: 'famicare-auth', storage: createJSONStorage(() => AsyncStorage) }
+    {
+      name: 'famicare-auth',
+      storage: createJSONStorage(() => ({
+        getItem: (name) => SecureStore.getItemAsync(name),
+        setItem: (name, value) => SecureStore.setItemAsync(name, value),
+        removeItem: (name) => SecureStore.deleteItemAsync(name),
+      })),
+    }
   )
 );

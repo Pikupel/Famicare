@@ -14,9 +14,9 @@ router.get('/', (req, res) => {
 });
 
 router.post('/', async (req, res) => {
-  const { type, title, body, targetUserId } = req.body;
+  const { type, title, body } = req.body;
   const notification = {
-    id: uuid(), userId: targetUserId || req.user.id, type: type || 'system',
+    id: uuid(), userId: req.user.id, type: type || 'system',
     title: title || '', body: body || '',
     isRead: false, createdAt: new Date().toISOString(),
   };
@@ -50,7 +50,7 @@ router.post('/', async (req, res) => {
 });
 
 router.put('/:id/read', async (req, res) => {
-  const idx = db.data.notifications.findIndex(n => n.id === req.params.id);
+  const idx = db.data.notifications.findIndex(n => n.id === req.params.id && n.userId === req.user.id);
   if (idx === -1) return res.status(404).json({ error: 'Bildirim bulunamadı' });
   db.data.notifications[idx].isRead = true;
   await db.write();

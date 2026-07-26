@@ -9,7 +9,6 @@ import { api } from '../src/services/api';
 import { useAuthStore } from '../src/stores/useAuthStore';
 
 const MONTHS = ['Ocak', 'Şubat', 'Mart', 'Nisan', 'Mayıs', 'Haziran', 'Temmuz', 'Ağustos', 'Eylül', 'Ekim', 'Kasım', 'Aralık'];
-const DAYS = Array.from({ length: 31 }, (_, i) => i + 1);
 
 function toLocalDate(isoDate: string) {
   if (!isoDate) return { d: '', m: '', y: '' };
@@ -29,6 +28,7 @@ export default function AppointmentsScreen() {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const year = new Date().getFullYear();
+  const days = Array.from({ length: new Date(year, month + 1, 0).getDate() }, (_, i) => i + 1);
 
   const loadData = useCallback(async () => {
     if (!profileId) { setLoading(false); return; }
@@ -62,8 +62,8 @@ export default function AppointmentsScreen() {
         </View>
 
         <View style={{ flexDirection: 'row', flexWrap: 'wrap' }}>
-          {Array.from({ length: new Date(year, month, 1).getDay() || 7 }).map((_, i) => <View key={`e-${i}`} style={{ width: '14.28%', aspectRatio: 1 }} />)}
-          {DAYS.map(day => {
+          {Array.from({ length: (new Date(year, month, 1).getDay() + 6) % 7 }).map((_, i) => <View key={`e-${i}`} style={{ width: '14.28%', aspectRatio: 1 }} />)}
+          {days.map(day => {
             const hasAppt = appointments.some((a: any) => { const { d, m: mo } = toLocalDate(a.date); return parseInt(d) === day && parseInt(mo) === month + 1; });
             return (
               <TouchableOpacity key={day} style={[styles.day, day === selected && { backgroundColor: colors.primary }]} onPress={() => setSelected(day)}>
@@ -87,7 +87,7 @@ export default function AppointmentsScreen() {
             const formattedDate = `${d.padStart(2,'0')}.${m.padStart(2,'0')}.${y}`;
             return (
               <TouchableOpacity key={a.id} style={[styles.apptCard, shadow.card]}
-                onPress={() => router.push({ pathname: '/add-appointment', params: { id: a.id, editTitle: a.title, editLocation: a.location, editDoctor: a.doctorName, editDate: formattedDate, editTime: a.time } })}
+                onPress={() => router.push({ pathname: '/add-appointment', params: { id: a.id, profileId, editTitle: a.title, editLocation: a.location, editDoctor: a.doctorName, editDate: formattedDate, editTime: a.time, editNotes: a.notes || '' } })}
               >
                 <View style={[styles.bar, { backgroundColor: colors.primary }]} />
                 <View style={{ flex: 1, paddingLeft: spacing.md }}>
@@ -114,7 +114,7 @@ export default function AppointmentsScreen() {
 
       <TouchableOpacity
         style={{ position: 'absolute', bottom: insets.bottom + 16, right: 16, width: 56, height: 56, borderRadius: 28, backgroundColor: colors.primary, alignItems: 'center', justifyContent: 'center', shadowColor: colors.primary, shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.3, shadowRadius: 6, elevation: 5 }}
-        onPress={() => router.push('/add-appointment')}
+        onPress={() => router.push({ pathname: '/add-appointment', params: { profileId } })}
       >
         <Text style={{ fontSize: 28, color: '#FFF', marginTop: -2 }}>+</Text>
       </TouchableOpacity>

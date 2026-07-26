@@ -20,6 +20,7 @@ export default function ProfileScreen() {
   const router = useRouter();
   const params = useLocalSearchParams();
   const userName = useAuthStore((s) => s.userName);
+  const userId = useAuthStore((s) => s.userId);
   const role = useAuthStore((s) => s.role);
   const logout = useAuthStore((s) => s.logout);
   const { theme, toggleTheme, isDark } = useTheme();
@@ -95,7 +96,7 @@ export default function ProfileScreen() {
               <Text style={{ ...typography.body, color: colors.text, flex: 1 }}>Sağlık Günlüğü</Text>
               <Text style={{ fontSize: 20, color: colors.textLight }}>›</Text>
             </TouchableOpacity>
-            <TouchableOpacity style={[styles.action, { borderBottomWidth: 0 }]} onPress={() => router.push({ pathname: '/reports', params: { profileName: String(params.name || '') } })}>
+            <TouchableOpacity style={[styles.action, { borderBottomWidth: 0 }]} onPress={() => router.push({ pathname: '/reports', params: { profileId: String(params.profileId || userId), profileName: String(params.name || '') } })}>
               <Text style={{ fontSize: 18, marginRight: spacing.md }}>📊</Text>
               <Text style={{ ...typography.body, color: colors.text, flex: 1 }}>Uyum Raporu</Text>
               <Text style={{ fontSize: 20, color: colors.textLight }}>›</Text>

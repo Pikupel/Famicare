@@ -1,36 +1,36 @@
 import { Router } from 'express';
 import { db, uuid } from '../db.js';
 import { authMiddleware } from '../middleware/auth.js';
+import { randomInt } from 'crypto';
 
 const router = Router();
 router.use(authMiddleware);
 
-const inviteAttempts = {}; // phone -> { count, blockUntil }
-
 function generateInviteCode() {
-  return String(Math.floor(10000000 + Math.random() * 90000000));
+  return String(randomInt(10000000, 100000000));
 }
 
 function checkBruteForce(phone) {
   const now = Date.now();
-  const record = inviteAttempts[phone];
+  const record = db.data.inviteAttempts?.[phone];
   if (record && record.blockUntil > now) {
     const remaining = Math.ceil((record.blockUntil - now) / 60000);
     return { blocked: true, remainingMinutes: remaining };
   }
-  if (!record) inviteAttempts[phone] = { count: 0, blockUntil: 0 };
+  if (!db.data.inviteAttempts) db.data.inviteAttempts = {};
+  if (!record) db.data.inviteAttempts[phone] = { count: 0, blockUntil: 0 };
   return { blocked: false };
 }
 
 function recordAttempt(phone, success) {
   if (success) {
-    delete inviteAttempts[phone];
+    delete db.data.inviteAttempts[phone];
     return;
   }
-  inviteAttempts[phone].count++;
-  if (inviteAttempts[phone].count >= 5) {
-    inviteAttempts[phone].blockUntil = Date.now() + 15 * 60 * 1000;
-    inviteAttempts[phone].count = 0;
+  db.data.inviteAttempts[phone].count++;
+  if (db.data.inviteAttempts[phone].count >= 5) {
+    db.data.inviteAttempts[phone].blockUntil = Date.now() + 15 * 60 * 1000;
+    db.data.inviteAttempts[phone].count = 0;
   }
 }
 
@@ -53,7 +53,7 @@ router.post('/', async (req, res) => {
   const profile = {
     id: uuid(), caregiverId: req.user.id, name, birthDate: birthDate || '',
     relationship: relationship || 'other', phone: phone || '',
-    inviteCode, linkedUserId: null,
+    inviteCode, inviteExpiresAt: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(), linkedUserId: null,
     isActive: true, createdAt: new Date().toISOString(),
   };
   db.data.profiles.push(profile);
@@ -70,9 +70,13 @@ router.post('/accept', async (req, res) => {
     return res.status(429).json({ error: `Çok fazla hatalı deneme. ${check.remainingMinutes} dakika bekleyin.` });
   }
 
-  const profile = db.data.profiles.find(p => p.inviteCode === inviteCode && !p.linkedUserId);
+  const profile = db.data.profiles.find(p =>
+    p.inviteCode === inviteCode && !p.linkedUserId &&
+    (!p.inviteExpiresAt || new Date(p.inviteExpiresAt) > new Date())
+  );
   if (!profile) {
     recordAttempt(inviteCode, false);
+    await db.write();
     return res.status(404).json({ error: 'Geçersiz kod' });
   }
 
@@ -81,6 +85,15 @@ router.post('/accept', async (req, res) => {
   await db.write();
   const caregiver = db.data.users.find(u => u.id === profile.caregiverId);
   res.json({ success: true, profile, caregiverName: caregiver?.name || 'Yakın' });
+});
+
+router.post('/:id/invite-code', async (req, res) => {
+  const profile = db.data.profiles.find(p => p.id === req.params.id && p.caregiverId === req.user.id);
+  if (!profile) return res.status(404).json({ error: 'Profil bulunamadı' });
+  profile.inviteCode = generateInviteCode();
+  profile.inviteExpiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString();
+  await db.write();
+  res.json({ inviteCode: profile.inviteCode, inviteExpiresAt: profile.inviteExpiresAt });
 });
 
 router.post('/disconnect', async (req, res) => {
@@ -101,7 +114,15 @@ router.get('/:id', (req, res) => {
 });
 
 router.delete('/:id', async (req, res) => {
-  db.data.profiles = db.data.profiles.filter(p => p.id !== req.params.id);
+  const profile = db.data.profiles.find(p => p.id === req.params.id && p.caregiverId === req.user.id);
+  if (!profile) return res.status(404).json({ error: 'Profil bulunamadı' });
+  const medicationIds = db.data.medications.filter(m => m.profileId === profile.id).map(m => m.id);
+  db.data.profiles = db.data.profiles.filter(p => p.id !== profile.id);
+  db.data.medications = db.data.medications.filter(m => m.profileId !== profile.id);
+  db.data.medicationLogs = db.data.medicationLogs.filter(l => l.profileId !== profile.id && !medicationIds.includes(l.medicationId));
+  db.data.healthRecords = db.data.healthRecords.filter(r => r.profileId !== profile.id);
+  db.data.appointments = db.data.appointments.filter(a => a.profileId !== profile.id);
+  db.data.emergencies = db.data.emergencies.filter(e => e.profileId !== profile.id);
   await db.write();
   res.json({ success: true });
 });

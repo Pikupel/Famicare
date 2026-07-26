@@ -1,94 +1,117 @@
 import { db, uuid } from '../db.js';
 import { sendPush } from './push.js';
 
-const CHECK_INTERVAL = 5 * 60 * 1000; // 5 minutes
+const CHECK_INTERVAL = 5 * 60 * 1000;
 let intervalId = null;
 
 export function startScheduler() {
   if (intervalId) return;
-  console.log('⏰ Scheduler başlatıldı (5 dk aralık)');
-  checkMissedDoses();
-  intervalId = setInterval(checkMissedDoses, CHECK_INTERVAL);
+  checkScheduledEvents().catch(error => console.error('Scheduler:', error.message));
+  intervalId = setInterval(() => checkScheduledEvents().catch(error => console.error('Scheduler:', error.message)), CHECK_INTERVAL);
 }
 
 export function stopScheduler() {
-  if (intervalId) { clearInterval(intervalId); intervalId = null; }
+  if (intervalId) clearInterval(intervalId);
+  intervalId = null;
 }
 
-async function checkMissedDoses() {
+function localParts(date, timezone = 'Europe/Istanbul') {
+  const parts = new Intl.DateTimeFormat('en-CA', {
+    timeZone: timezone, year: 'numeric', month: '2-digit', day: '2-digit',
+    hour: '2-digit', minute: '2-digit', hourCycle: 'h23',
+  }).formatToParts(date).reduce((result, part) => ({ ...result, [part.type]: part.value }), {});
+  return {
+    date: `${parts.year}-${parts.month}-${parts.day}`,
+    time: `${parts.hour}:${parts.minute}`,
+    minutes: Number(parts.hour) * 60 + Number(parts.minute),
+  };
+}
+
+function isMedicationActive(medication, date) {
+  if (medication.isActive === false) return false;
+  if (!medication.endDate) return true;
+  const normalized = /^\d{2}\.\d{2}\.\d{4}$/.test(medication.endDate)
+    ? medication.endDate.split('.').reverse().join('-')
+    : medication.endDate;
+  return normalized >= date;
+}
+
+async function checkScheduledEvents() {
   const now = new Date();
-  const currentMinutes = now.getHours() * 60 + now.getMinutes();
 
   for (const medication of db.data.medications) {
-    if (!medication.times?.length) continue;
-    if (!medication.profileId) continue;
-
     const profile = db.data.profiles.find(p => p.id === medication.profileId);
-    if (!profile) continue;
+    const patient = db.data.users.find(u => u.id === (profile?.linkedUserId || medication.profileId));
+    const timezone = patient?.timezone || 'Europe/Istanbul';
+    const local = localParts(now, timezone);
+    if (!medication.times?.length || !isMedicationActive(medication, local.date)) continue;
 
-    // Get the first time of day for this medication
-    const [h, m] = medication.times[0].split(':').map(Number);
-    const medMinutes = h * 60 + m;
+    for (const scheduledTime of medication.times) {
+      const [hour, minute] = scheduledTime.split(':').map(Number);
+      const elapsed = local.minutes - (hour * 60 + minute);
+      if (elapsed < 30 || elapsed > 90) continue;
 
-    // Check if the medication time has passed by more than 30 min but less than 90 min
-    const minutesSince = currentMinutes - medMinutes;
-    if (minutesSince < 30 || minutesSince > 90) continue;
+      const log = db.data.medicationLogs.find(l =>
+        l.medicationId === medication.id && l.date === local.date && l.scheduledTime === scheduledTime
+      );
+      if (['taken', 'caregiver_marked'].includes(log?.status)) continue;
+      if (log?.status === 'postponed' && elapsed < 45) continue;
 
-    // Check if already resolved today (taken, caregiver_marked, or caregiver override)
-    const today = now.toISOString().split('T')[0];
-    const todayLog = db.data.medicationLogs.find(
-      l => l.medicationId === medication.id && l.date === today
-    );
-    if (todayLog && (todayLog.status === 'taken' || todayLog.status === 'caregiver_marked')) continue;
+      const doseKey = `${medication.id}:${local.date}:${scheduledTime}`;
+      if (db.data.notifications.some(n => n.doseKey === doseKey && n.type === 'missed_dose')) continue;
 
-    // For postponed doses, use shorter interval
-    const escalationMinutes = todayLog?.status === 'postponed' ? 60 : 30;
-    if (minutesSince < escalationMinutes) continue;
+      if (!log) {
+        db.data.medicationLogs.push({
+          id: uuid(), medicationId: medication.id, profileId: medication.profileId,
+          scheduledTime, date: local.date, status: 'unresponded',
+          takenAt: null, confirmedBy: 'system', changedBy: 'system',
+        });
+      }
 
-    // Check if already notified for this time
-    const timeLabel = medication.times[0];
-    const alreadyNotified = db.data.notifications.some(
-      n => n.type === 'missed_dose' && n.body?.includes(medication.name) && n.body?.includes(timeLabel) && n.createdAt?.startsWith(today)
-    );
-    if (alreadyNotified) continue;
+      if (patient) {
+        db.data.notifications.push({
+          id: uuid(), userId: patient.id, type: 'missed_dose', doseKey,
+          title: '⚠️ Doz Kaçırıldı', body: `${medication.name} - ${scheduledTime} dozunu almadınız.`,
+          isRead: false, createdAt: now.toISOString(),
+        });
+      }
 
-    // Auto-create unresponded log if none exists
-    if (!todayLog) {
-      db.data.medicationLogs.push({
-        id: uuid(), medicationId: medication.id, profileId: medication.profileId,
-        scheduledTime: medication.times[0], date: today, status: 'unresponded',
-        takenAt: now.toISOString(), confirmedBy: 'system',
-        changedBy: 'system',
-      });
-    }
-
-    console.log(`⚠️ Kaçırılan doz: ${medication.name} (${profile.name})`);
-
-    // Create notification for the patient
-    if (profile.linkedUserId) {
-      db.data.notifications.push({
-        id: uuid(), userId: profile.linkedUserId, type: 'missed_dose',
-        title: '⚠️ Doz Kaçırıldı', body: `${medication.name} - ${medication.times[0]} ilacınızı almadınız.`,
-        isRead: false, createdAt: now.toISOString(),
-      });
-    }
-
-    // Create notification + push for the caregiver
-    const caregiverId = profile.caregiverId;
-    if (caregiverId) {
-      const patientUser = db.data.users.find(u => u.id === profile.linkedUserId || u.id === medication.profileId);
-      const patientName = patientUser?.name || profile.name || 'Bir yakınınız';
-
-      db.data.notifications.push({
-        id: uuid(), userId: caregiverId, type: 'missed_dose',
-        title: `⚠️ ${patientName} ilacını almadı`,
-        body: `${medication.name} - ${medication.times[0]}`,
-        isRead: false, createdAt: now.toISOString(),
-      });
-
-      await sendPush(caregiverId, `⚠️ ${patientName} ilacını almadı`, `${medication.name} - ${medication.times[0]}`);
+      if (profile?.caregiverId) {
+        const patientName = patient?.name || profile.name || 'Yakınınız';
+        const notification = {
+          id: uuid(), userId: profile.caregiverId, type: 'missed_dose', doseKey,
+          title: `⚠️ ${patientName} ilacını almadı`, body: `${medication.name} - ${scheduledTime}`,
+          isRead: false, createdAt: now.toISOString(),
+        };
+        db.data.notifications.push(notification);
+        await sendPush(notification.userId, notification.title, notification.body, { doseKey, type: 'missed_dose' });
+      }
     }
   }
 
+  await checkAppointmentReminders(now);
   await db.write();
+}
+
+async function checkAppointmentReminders(now) {
+  for (const appointment of db.data.appointments) {
+    if (appointment.status === 'cancelled' || !appointment.date || !appointment.time) continue;
+    const target = new Date(`${appointment.date}T${appointment.time}:00+03:00`);
+    const hoursUntil = (target.getTime() - now.getTime()) / 3600000;
+    if (hoursUntil < 23 || hoursUntil > 25) continue;
+    const reminderKey = `appointment:${appointment.id}:24h`;
+    if (db.data.notifications.some(n => n.reminderKey === reminderKey)) continue;
+    const profile = db.data.profiles.find(p => p.id === appointment.profileId);
+    const recipients = [profile?.linkedUserId, profile?.caregiverId, appointment.profileId].filter(Boolean);
+    for (const userId of new Set(recipients)) {
+      const notification = {
+        id: uuid(), userId, type: 'appointment', reminderKey,
+        title: '🏥 Yarın randevunuz var',
+        body: `${appointment.title} • ${appointment.time}${appointment.location ? ` • ${appointment.location}` : ''}`,
+        isRead: false, createdAt: now.toISOString(),
+      };
+      db.data.notifications.push(notification);
+      await sendPush(userId, notification.title, notification.body, { type: 'appointment', appointmentId: appointment.id });
+    }
+  }
 }

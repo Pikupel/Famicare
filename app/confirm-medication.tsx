@@ -5,6 +5,7 @@ import { colors } from '../src/theme/colors';
 import { typography } from '../src/theme/typography';
 import { spacing, borderRadius } from '../src/theme/spacing';
 import { api } from '../src/services/api';
+import { cancelDoseFollowups, schedulePostponedReminder } from '../src/services/notifications';
 
 export default function ConfirmMedicationScreen() {
   const router = useRouter();
@@ -16,7 +17,9 @@ export default function ConfirmMedicationScreen() {
     setConfirmed(action);
     const timer = setTimeout(async () => {
       try {
-        await api.post(`/medications/${id}/log`, { status: action, confirmedBy: 'elderly' });
+        await api.post(`/medications/${id}/log`, { status: action, scheduledTime: String(time || '') });
+        if (action === 'taken') await cancelDoseFollowups(String(id), String(time || ''));
+        else await schedulePostponedReminder(String(id), String(name || 'İlaç'), String(time || ''));
         Alert.alert(action === 'taken' ? '✅ Kaydedildi' : '⏰ Ertelendi', action === 'taken' ? 'İlaç alındı olarak işaretlendi.' : '15 dk sonra tekrar hatırlatılacak.');
         router.back();
       } catch { Alert.alert('Hata', 'Kaydedilemedi'); }

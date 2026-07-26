@@ -21,6 +21,9 @@ export default function EditMedicationScreen() {
 
   const save = async () => {
     if (!name.trim()) { Alert.alert('Uyarı', 'İlaç adı gerekli'); return; }
+    if (!times.length || times.some(t => !/^(?:[01]\d|2[0-3]):[0-5]\d$/.test(t))) {
+      Alert.alert('Uyarı', 'Saatleri SS:DD biçiminde ve geçerli aralıkta girin'); return;
+    }
     setSaving(true);
     try {
       await api.patch(`/medications/${id}`, { name: name.trim(), dosage, times, purpose });

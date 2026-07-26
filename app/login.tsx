@@ -1,7 +1,6 @@
 import { useState } from 'react';
 import { View, Text, TextInput, TouchableOpacity, StyleSheet, KeyboardAvoidingView, Platform, Alert, ScrollView } from 'react-native';
 import { useRouter, useLocalSearchParams } from 'expo-router';
-import AsyncStorage from '@react-native-async-storage/async-storage';
 import { colors } from '../src/theme/colors';
 import { typography } from '../src/theme/typography';
 import { spacing, borderRadius } from '../src/theme/spacing';
@@ -34,41 +33,22 @@ export default function LoginScreen() {
     try {
       if (isExisting) {
         // Existing user login
-        const res = await api.post<{ user: { id: string; name: string; role: string }; token: string }>('/auth/login', { phone: phone.trim() });
-        // Verify PIN
-        const savedPin = await AsyncStorage.getItem('famicare_pin_' + res.user.id);
-        if (!savedPin) {
-          Alert.alert('Hata', 'Bu cihazda PIN kaydı bulunamadı. Lütfen kayıtlı cihazdan giriş yapın.');
-          setLoading(false); return;
-        }
-        if (pin !== savedPin) {
-          Alert.alert('Hata', 'PIN hatalı');
-          setLoading(false); return;
-        }
+        const res = await api.post<{ user: { id: string; name: string; role: string }; token: string }>('/auth/login', { phone: phone.trim(), pin });
         login(res.user.name, res.token, res.user.id, res.user.role as any);
-        await AsyncStorage.setItem('famicare_session', 'true');
         router.replace(res.user.role === 'caregiver' ? '/caregiver' : '/home');
       } else {
         // New registration
         const res = await api.post<{ user: { id: string; name: string }; token: string }>('/auth/register', {
-          phone: phone.trim(), name: name.trim(), role,
+          phone: phone.trim(), name: name.trim(), role, pin,
         });
         login(res.user.name, res.token, res.user.id, role!);
-        await AsyncStorage.setItem('famicare_pin_' + res.user.id, pin);
-        await AsyncStorage.setItem('famicare_session', 'true');
         router.replace(role === 'caregiver' ? '/caregiver' : '/home');
       }
     } catch (err: any) {
       if (!isExisting && err?.message?.includes('zaten kayıtlı')) {
         try {
-          const res = await api.post<{ user: { id: string; name: string }; token: string }>('/auth/login', { phone: phone.trim(), role });
-          const savedPin = await AsyncStorage.getItem('famicare_pin_' + res.user.id);
-          if (savedPin && pin !== savedPin) {
-            Alert.alert('Hata', 'PIN hatalı'); setLoading(false); return;
-          }
+          const res = await api.post<{ user: { id: string; name: string }; token: string }>('/auth/login', { phone: phone.trim(), role, pin });
           login(res.user.name, res.token, res.user.id, role!);
-          await AsyncStorage.setItem('famicare_pin_' + res.user.id, pin);
-          await AsyncStorage.setItem('famicare_session', 'true');
           router.replace(role === 'caregiver' ? '/caregiver' : '/home');
         } catch { Alert.alert('Hata', 'Giriş yapılamadı'); }
       } else {

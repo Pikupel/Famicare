@@ -6,7 +6,7 @@ import { colors } from '../src/theme/colors';
 import { typography } from '../src/theme/typography';
 import { spacing, borderRadius, shadow } from '../src/theme/spacing';
 import * as Speech from 'expo-speech';
-import { setupNotifications, scheduleMedicationReminder, cancelAllReminders } from '../src/services/notifications';
+import { setupNotifications, scheduleMedicationReminder } from '../src/services/notifications';
 import { useAuthStore } from '../src/stores/useAuthStore';
 import { api } from '../src/services/api';
 import { EmptyState } from '../src/components/EmptyState';
@@ -47,22 +47,8 @@ export default function HomeScreen() {
         setMedications(data);
         cacheData('medications', data);
         await setupNotifications();
-        await cancelAllReminders();
         for (const m of data) {
-          if (m.times?.[0]) await scheduleMedicationReminder(m.id, m.name, m.times[0]);
-        }
-        const now = new Date();
-        const currentMinutes = now.getHours() * 60 + now.getMinutes();
-        const missed = data.filter((m: any) => {
-          if (!m.times?.length) return false;
-          const [mh, mm] = m.times[0].split(':').map(Number);
-          const minutesSince = currentMinutes - (mh * 60 + mm);
-          return minutesSince > 30 && minutesSince < 90;
-        });
-        if (missed.length > 0) {
-          const names = missed.map((m: any) => m.name).join(', ');
-          Alert.alert('⚠️ Kaçırılan Doz', `${names} ilaçlarınızı zamanında almadınız.`);
-          api.post('/notifications', { userId, type: 'missed_dose', title: '⚠️ Doz Kaçırıldı', body: `${names} zamanında alınmadı` }).catch(() => {});
+          for (const time of m.times || []) await scheduleMedicationReminder(m.id, m.name, time);
         }
       } catch {
         const cached = await getCachedData<any[]>('medications');
@@ -115,12 +101,12 @@ export default function HomeScreen() {
             <EmptyState icon="💊" title="Henüz ilaç eklenmemiş" description="İlaçlarınızı eklemek için aşağıdaki butonu kullanın." actionLabel="İlaç Ekle" onAction={() => router.push('/add-medication')} />
           ) : (
             <>
-              {medications.map((m: any) => (
-                <View key={m.id} style={[styles.medRow, isTimePassed(m.times?.[0]) && { borderLeftWidth: 3, borderLeftColor: colors.danger }]}>
-                  <TouchableOpacity style={{ width: 56, minHeight: 48, justifyContent: 'center' }} onPress={() => router.push({ pathname: '/confirm-medication', params: { id: m.id, name: m.name, dosage: m.dosage, purpose: m.purpose || '', time: m.times?.[0] || '' } })}>
-                    <Text style={{ ...typography.h2, fontSize: 20, color: isTimePassed(m.times?.[0]) ? colors.danger : colors.primary }}>{m.times?.[0] || '--'}</Text>
+              {medications.flatMap((m: any) => (m.times || []).map((time: string) => (
+                <View key={`${m.id}-${time}`} style={[styles.medRow, isTimePassed(time) && { borderLeftWidth: 3, borderLeftColor: colors.danger }]}>
+                  <TouchableOpacity style={{ width: 56, minHeight: 48, justifyContent: 'center' }} onPress={() => router.push({ pathname: '/confirm-medication', params: { id: m.id, name: m.name, dosage: m.dosage, purpose: m.purpose || '', time } })}>
+                    <Text style={{ ...typography.h2, fontSize: 20, color: isTimePassed(time) ? colors.danger : colors.primary }}>{time}</Text>
                   </TouchableOpacity>
-                  <TouchableOpacity style={{ flex: 1, minHeight: 48, justifyContent: 'center' }} onPress={() => router.push({ pathname: '/confirm-medication', params: { id: m.id, name: m.name, dosage: m.dosage, purpose: m.purpose || '', time: m.times?.[0] || '' } })}>
+                  <TouchableOpacity style={{ flex: 1, minHeight: 48, justifyContent: 'center' }} onPress={() => router.push({ pathname: '/confirm-medication', params: { id: m.id, name: m.name, dosage: m.dosage, purpose: m.purpose || '', time } })}>
                     <Text style={{ ...typography.body, fontWeight: '500', color: colors.text }}>{m.name}</Text>
                     <Text style={{ ...typography.caption, color: colors.textSecondary }}>{m.dosage}</Text>
                     {m.purpose ? <Text style={{ ...typography.small, color: colors.textLight, fontStyle: 'italic', marginTop: 2 }}>{m.purpose}</Text> : null}
@@ -129,7 +115,7 @@ export default function HomeScreen() {
                     <Text style={{ fontSize: 18 }}>🔊</Text>
                   </TouchableOpacity>
                 </View>
-              ))}
+              )))}
             </>
           )}
         </View>

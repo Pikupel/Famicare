@@ -1,6 +1,7 @@
 import * as Notifications from 'expo-notifications';
 import { Platform } from 'react-native';
 import { api } from './api';
+import Constants from 'expo-constants';
 
 export async function setupNotifications() {
   try {
@@ -23,7 +24,9 @@ export async function setupNotifications() {
     }
 
     // Get Expo push token and save to backend
-    const tokenData = await Notifications.getExpoPushTokenAsync();
+    const projectId = Constants.expoConfig?.extra?.eas?.projectId ?? Constants.easConfig?.projectId;
+    if (!projectId) return false;
+    const tokenData = await Notifications.getExpoPushTokenAsync({ projectId });
     await api.patch('/me', { fcmToken: tokenData.data });
     return true;
   } catch {
@@ -49,41 +52,52 @@ export async function sendTestNotification() {
 }
 
 export async function scheduleMedicationReminder(medId: string, name: string, timeString: string) {
-  try { await Notifications.cancelScheduledNotificationAsync(medId); } catch {}
-
   const [h, m] = timeString.split(':').map(Number);
-  const now = new Date();
-  const trigger = new Date(now.getFullYear(), now.getMonth(), now.getDate(), h, m, 0);
-  if (trigger <= now) trigger.setDate(trigger.getDate() + 1);
+  if (!Number.isInteger(h) || !Number.isInteger(m)) return;
+  const identifier = doseNotificationId(medId, timeString);
+  try { await Notifications.cancelScheduledNotificationAsync(identifier); } catch {}
 
   try {
     await Notifications.scheduleNotificationAsync({
-      identifier: medId,
+      identifier,
       content: {
         title: '💊 İlaç Zamanı',
         body: `${name} - ${timeString}`,
         sound: 'default',
         priority: Notifications.AndroidNotificationPriority.MAX,
-        data: { medicationId: medId, type: 'medication_reminder' },
+        data: { medicationId: medId, scheduledTime: timeString, type: 'medication_reminder', url: `/confirm-medication?id=${encodeURIComponent(medId)}&name=${encodeURIComponent(name)}&time=${encodeURIComponent(timeString)}` },
       },
-      trigger: { date: trigger, type: 'date' } as any,
-    });
-
-    const r10 = new Date(trigger.getTime() + 600000);
-    const r30 = new Date(trigger.getTime() + 1800000);
-    await Notifications.scheduleNotificationAsync({
-      identifier: medId + '_10',
-      content: { title: '⚠️ İlaç Hatırlatma', body: `${name} ilacınızı almadınız.`, sound: 'default', priority: Notifications.AndroidNotificationPriority.HIGH, data: { medicationId: medId, type: 'missed_dose' } },
-      trigger: { date: r10, type: 'date' } as any,
-    });
-    await Notifications.scheduleNotificationAsync({
-      identifier: medId + '_30',
-      content: { title: '🔴 İlaç Alınmadı', body: `${name} ilacınızı almayı unuttunuz!`, sound: 'default', priority: Notifications.AndroidNotificationPriority.MAX, data: { medicationId: medId, type: 'missed_dose' } },
-      trigger: { date: r30, type: 'date' } as any,
+      trigger: {
+        type: Notifications.SchedulableTriggerInputTypes.DAILY,
+        hour: h,
+        minute: m,
+        channelId: 'medication',
+      },
     });
   } catch {}
 }
 
-export async function cancelAllReminders() {
-  try { await Notifications.cancelAllScheduledNotificationsAsync(); } catch {}
+export async function schedulePostponedReminder(medId: string, name: string, timeString: string) {
+  await Notifications.scheduleNotificationAsync({
+    identifier: `${doseNotificationId(medId, timeString)}_postponed`,
+    content: {
+      title: '⏰ Ertelenen ilaç zamanı',
+      body: `${name} ilacınızı şimdi almayı unutmayın.`,
+      sound: 'default',
+      data: { medicationId: medId, scheduledTime: timeString, type: 'postponed' },
+    },
+    trigger: {
+      type: Notifications.SchedulableTriggerInputTypes.TIME_INTERVAL,
+      seconds: 15 * 60,
+      channelId: 'medication',
+    },
+  });
+}
+
+export async function cancelDoseFollowups(medId: string, timeString: string) {
+  try { await Notifications.cancelScheduledNotificationAsync(`${doseNotificationId(medId, timeString)}_postponed`); } catch {}
+}
+
+function doseNotificationId(medId: string, timeString: string) {
+  return `med_${medId}_${timeString.replace(':', '')}`;
 }

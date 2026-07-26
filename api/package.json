@@ -5,7 +5,9 @@
   "scripts": {
     "start": "node src/index.js",
     "dev": "node --watch src/index.js",
-    "build": "node src/scripts/import-drugs.js"
+    "build": "node src/scripts/import-drugs.js",
+    "test": "node --test",
+    "admin:setup": "node src/scripts/setup-admin.js"
   },
   "dependencies": {
     "bcryptjs": "^2.4.3",
@@ -13,10 +15,14 @@
     "express": "^4.21.0",
     "jsonwebtoken": "^9.0.2",
     "lowdb": "^7.0.1",
+    "otplib": "^13.4.1",
     "pdfkit": "^0.19.1",
     "pg": "^8.22.0",
-    "uuid": "^10.0.0",
-    "web-push": "^3.6.7",
-    "xlsx": "^0.18.5"
+    "uuid": "^14.0.1",
+    "web-push": "^3.6.7"
+  },
+  "devDependencies": {
+    "exceljs": "^4.4.0",
+    "supertest": "^7.2.2"
   }
 }

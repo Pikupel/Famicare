@@ -2,11 +2,11 @@ import { db } from '../db.js';
 
 const EXPO_PUSH_URL = 'https://exp.host/--/api/v2/push/send';
 
-export async function sendPush(userId, title, body) {
+export async function sendPush(userId, title, body, data = {}) {
   const user = db.data.users.find(u => u.id === userId);
   if (!user || !user.fcmToken) {
     console.log(`[PUSH] No token for user ${userId}`);
-    return;
+    return { success: false, reason: 'token_missing' };
   }
 
   const message = {
@@ -16,6 +16,7 @@ export async function sendPush(userId, title, body) {
     body: body || '',
     priority: 'high',
     channelId: 'missed_dose',
+    data,
   };
 
   try {
@@ -32,9 +33,12 @@ export async function sendPush(userId, title, body) {
         user.fcmToken = null;
         await db.write();
       }
+      return { success: false, reason: data.data.message || 'push_error' };
     }
+    return { success: true, ticketId: data.data?.id || null };
   } catch (err) {
     console.error('[PUSH] Failed:', err.message);
+    return { success: false, reason: err.message };
   }
 }
 
