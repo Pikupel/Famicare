@@ -41,7 +41,7 @@ export async function initDb() {
       console.log('✅ PostgreSQL bağlantısı başarılı');
     } catch (e) {
       console.log('⚠️ PostgreSQL bağlanamadı:', e.message);
-      if (pgPool) await pgPool.end().catch(() => {});
+      if (pgPool) await pgPool.end().catch((e) => console.error('db: pgPool.end failed', e.message));
       pgPool = null;
       if (process.env.NODE_ENV === 'production') {
         throw new Error('Kalıcı PostgreSQL veritabanına bağlanılamadı; veri kaybını önlemek için API başlatılmadı');

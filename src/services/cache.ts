@@ -7,7 +7,7 @@ export async function cacheData(key: string, data: any) {
     await AsyncStorage.setItem(CACHE_PREFIX + key, JSON.stringify({
       data, timestamp: Date.now(),
     }));
-  } catch {}
+  } catch { /* AsyncStorage write failed — non-critical */ }
 }
 
 export async function getCachedData<T>(key: string): Promise<{ data: T; age: number } | null> {

@@ -22,6 +22,7 @@ export default function EditMedicationScreen() {
   const [saving, setSaving] = useState(false);
 
   const save = async () => {
+    if (!id) { Alert.alert('Hata', 'İlaç bilgisi bulunamadı.'); router.back(); return; }
     if (!name.trim()) { Alert.alert('Uyarı', 'İlaç adı gerekli'); return; }
     if (!times.length || times.some(t => !/^(?:[01]\d|2[0-3]):[0-5]\d$/.test(t))) {
       Alert.alert('Uyarı', 'Saatleri SS:DD biçiminde ve geçerli aralıkta girin'); return;

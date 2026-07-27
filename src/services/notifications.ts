@@ -117,7 +117,7 @@ export async function schedulePostponedReminder(medId: string, name: string, tim
 }
 
 export async function cancelDoseFollowups(medId: string, timeString: string) {
-  try { await Notifications.cancelScheduledNotificationAsync(`${doseNotificationId(medId, timeString)}_postponed`); } catch {}
+  try { await Notifications.cancelScheduledNotificationAsync(`${doseNotificationId(medId, timeString)}_postponed`); } catch { /* non-critical cancel */ }
 }
 
 function doseNotificationId(medId: string, timeString: string) {
