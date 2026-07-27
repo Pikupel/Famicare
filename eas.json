@@ -14,7 +14,7 @@
         "buildType": "app-bundle"
       },
       "ios": {
-        "buildType": "app-store"
+        "simulator": false
       },
       "env": {
         "EXPO_PUBLIC_API_URL": "https://famicare-production-f63d.up.railway.app/api/v1"
