@@ -1,7 +1,8 @@
 import { Router } from 'express';
 import bcrypt from 'bcryptjs';
-import { db, uuid } from '../db.js';
+import { db, uuid, deleteRelationalData, pgPool } from '../db.js';
 import { generateToken } from '../middleware/auth.js';
+import { removeUserFromState } from '../services/user-deletion.js';
 
 const router = Router();
 
@@ -54,10 +55,39 @@ router.post('/login', async (req, res) => {
   res.json({ user: { id: user.id, name: user.name, role: user.role, phone: user.phone }, token });
 });
 
+router.post('/delete-account', async (req, res) => {
+  const phone = normalizePhone(req.body?.phone);
+  const pin = String(req.body?.pin || '');
+  if (req.body?.confirmation !== 'HESABIMI SİL' || !phone || !/^\d{4,6}$/.test(pin)) {
+    return res.status(400).json({ error: 'Telefon, PIN ve HESABIMI SİL onayı gereklidir' });
+  }
+  if (process.env.DATABASE_URL && !pgPool) return res.status(503).json({ error: 'Kalıcı veritabanına ulaşılamıyor. Hesap silinmedi.' });
+  const user = db.data.users.find(item => item.phone === phone);
+  if (user?.loginBlockedUntil && new Date(user.loginBlockedUntil) > new Date()) {
+    return res.status(429).json({ error: 'Çok fazla hatalı deneme. Lütfen daha sonra tekrar deneyin.' });
+  }
+  if (!user || !user.pinHash || !await bcrypt.compare(pin, user.pinHash)) {
+    if (user) {
+      user.failedLoginAttempts = (user.failedLoginAttempts || 0) + 1;
+      if (user.failedLoginAttempts >= 5) {
+        user.loginBlockedUntil = new Date(Date.now() + 15 * 60 * 1000).toISOString();
+        user.failedLoginAttempts = 0;
+      }
+      await db.write();
+    }
+    return res.status(401).json({ error: 'Telefon veya PIN hatalı' });
+  }
+  const deletion = removeUserFromState(user.id);
+  await db.write();
+  await deleteRelationalData({ userIds: [user.id], profileIds: deletion.profileIds });
+  res.json({ success: true });
+});
+
 export default router;
 
 function normalizePhone(value) {
   const digits = String(value || '').replace(/\D/g, '');
+  if (digits.length === 11 && digits.startsWith('0')) return `90${digits.slice(1)}`;
   if (digits.length === 10) return `90${digits}`;
   if (digits.length === 12 && digits.startsWith('90')) return digits;
   return '';

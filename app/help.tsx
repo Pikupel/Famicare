@@ -11,8 +11,8 @@ const FAQS = [
   { q: 'Bakıcı nasıl bağlanır?', a: 'Bakıcı, profilinizdeki davet kodunu size verir. Siz de "Yakınına Bağlan" bölümünde bu 8 haneli kodu girerek bağlanırsınız.' },
   { q: 'İlaç saatini kaçırırsam ne olur?', a: '30 dakika içinde almadıysanız uyarı alırsınız. 10 ve 30 dakika sonra tekrar hatırlatılır. Bakıcınız da bilgilendirilir.' },
   { q: 'SOS butonu ne işe yarar?', a: 'Acil durumda kırmızı 🆘 butonuna basın. Yakınınıza bildirim gönderilir.' },
-  { q: 'PIN kodu nedir?', a: 'Hızlı giriş için belirleyebileceğiniz 4 haneli koddur. İsteğe bağlıdır, "Daha sonra" diyerek atlayabilirsiniz.' },
-  { q: 'Verilerim güvende mi?', a: 'Tüm verileriniz şifrelenir ve yalnızca sizin ve bağlı yakınınızın erişimine açıktır. İstediğiniz zaman bağlantıyı kaldırabilirsiniz.' },
+  { q: 'PIN kodu nedir?', a: 'Hesabınıza güvenli giriş yapmak ve hesap silme gibi hassas işlemleri onaylamak için kullandığınız 4-6 haneli koddur.' },
+  { q: 'Verilerim nasıl korunur?', a: 'Veriler HTTPS üzerinden iletilir; oturum, PIN özeti ve erişim kontrolleriyle korunur. Bağladığınız yakınlar yetkileri kapsamındaki profil bilgilerine erişebilir.' },
 ];
 
 export default function HelpScreen() {
@@ -42,6 +42,12 @@ export default function HelpScreen() {
           <Text style={{ ...typography.body, color: colors.textSecondary, marginBottom: spacing.sm }}>Sorun yaşıyorsanız bize ulaşın:</Text>
           <TouchableOpacity style={{ minHeight: 48, justifyContent: 'center' }} onPress={() => Linking.openURL('mailto:destek@famicare.app')}>
             <Text style={{ ...typography.body, color: colors.primary, fontWeight: '600' }}>📧 destek@famicare.app</Text>
+          </TouchableOpacity>
+          <TouchableOpacity style={{ minHeight: 48, justifyContent: 'center' }} onPress={() => Linking.openURL('https://famicare-production-f63d.up.railway.app/privacy')}>
+            <Text style={{ ...typography.body, color: colors.primary, fontWeight: '600' }}>Gizlilik Politikası</Text>
+          </TouchableOpacity>
+          <TouchableOpacity style={{ minHeight: 48, justifyContent: 'center' }} onPress={() => Linking.openURL('https://famicare-production-f63d.up.railway.app/delete-account')}>
+            <Text style={{ ...typography.body, color: colors.primary, fontWeight: '600' }}>Web Üzerinden Hesap Silme</Text>
           </TouchableOpacity>
         </View>
       </ScrollView>

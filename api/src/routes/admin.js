@@ -5,6 +5,7 @@ import jwt from 'jsonwebtoken';
 import { timingSafeEqual } from 'crypto';
 import { verify as verifyTotp } from 'otplib';
 import { createTitckPreview, consumeTitckPreview } from '../services/titck-import.js';
+import { removeUserFromState } from '../services/user-deletion.js';
 
 const router = Router();
 const ADMIN_USERNAME = process.env.ADMIN_USERNAME;
@@ -194,32 +195,13 @@ router.get('/profiles', (req, res) => {
 router.delete('/users/:id', async (req, res) => {
   if (!requireConfirmation(req, res, 'KULLANICIYI SİL')) return;
   if (!requirePersistentDatabase(req, res)) return;
-  const user = db.data.users.find(u => u.id === req.params.id);
-  if (!user) return res.status(404).json({ error: 'Kullanıcı bulunamadı' });
   const uid = req.params.id;
-  db.data.users = db.data.users.filter(u => u.id !== uid);
-  db.data.notifications = db.data.notifications.filter(n => n.userId !== uid);
-  db.data.emergencyContacts = db.data.emergencyContacts.filter(c => c.userId !== uid);
-  db.data.medications = db.data.medications.filter(m => m.profileId !== uid);
-  db.data.medicationLogs = db.data.medicationLogs.filter(l => l.profileId !== uid);
-  db.data.appointments = db.data.appointments.filter(a => a.profileId !== uid);
-  db.data.healthRecords = db.data.healthRecords.filter(r => r.profileId !== uid);
-  db.data.emergencies = db.data.emergencies.filter(e => e.profileId !== uid);
-  // Delete profiles owned by a caregiver, but only unlink an elderly account.
-  const ownedProfiles = db.data.profiles.filter(p => p.caregiverId === uid);
-  for (const p of ownedProfiles) {
-    db.data.medications = db.data.medications.filter(m => m.profileId !== p.id);
-    db.data.medicationLogs = db.data.medicationLogs.filter(l => l.profileId !== p.id);
-    db.data.appointments = db.data.appointments.filter(a => a.profileId !== p.id);
-    db.data.healthRecords = db.data.healthRecords.filter(r => r.profileId !== p.id);
-    db.data.emergencies = db.data.emergencies.filter(e => e.profileId !== p.id);
-  }
-  db.data.profiles = db.data.profiles.filter(p => p.caregiverId !== uid);
-  for (const profile of db.data.profiles.filter(p => p.linkedUserId === uid)) profile.linkedUserId = null;
+  const deletion = removeUserFromState(uid);
+  if (!deletion) return res.status(404).json({ error: 'Kullanıcı bulunamadı' });
   await db.write();
-  await deleteRelationalData({ userIds: [uid], profileIds: [uid, ...ownedProfiles.map(profile => profile.id)] });
-  await recordAudit(req, 'user.delete', 'user', uid, { name: user.name });
-  res.json({ success: true, deletedName: user.name });
+  await deleteRelationalData({ userIds: [uid], profileIds: deletion.profileIds });
+  await recordAudit(req, 'user.delete', 'user', uid, { name: deletion.user.name });
+  res.json({ success: true, deletedName: deletion.user.name });
 });
 
 router.patch('/users/:id/pin', async (req, res) => {

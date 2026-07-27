@@ -50,6 +50,9 @@ app.use('/api/v1/reports', reportRoutes);
 app.use('/api/v1/admin', adminRoutes);
 app.use('/api/v1/drugs', drugRoutes);
 app.use('/api/v1/me', meRoutes);
+const publicDir = join(__dirname, 'public');
+app.get('/privacy', (req, res) => res.sendFile(join(publicDir, 'privacy.html')));
+app.get('/delete-account', (req, res) => res.sendFile(join(publicDir, 'delete-account.html')));
 app.use('/admin', (req, res, next) => {
   res.setHeader('Content-Security-Policy', "default-src 'self'; style-src 'self' 'unsafe-inline'; script-src 'self' 'unsafe-inline'; object-src 'none'; base-uri 'none'; frame-ancestors 'none'");
   res.setHeader('Cache-Control', 'no-store');

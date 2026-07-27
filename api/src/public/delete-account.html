@@ -1,0 +1,52 @@
+<!doctype html>
+<html lang="tr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Famicare Hesap Silme</title>
+  <style>
+    body{font:16px/1.5 system-ui,sans-serif;color:#172033;background:#f5f7fb;margin:0}main{max-width:560px;margin:8vh auto;padding:20px}
+    section{background:#fff;border:1px solid #dfe5ef;border-radius:16px;padding:26px}label{display:block;margin-top:14px;font-weight:650}
+    input,button{width:100%;box-sizing:border-box;min-height:46px;margin-top:7px;border-radius:9px;padding:10px 12px;font:inherit}
+    input{border:1px solid #c8d1df}button{border:0;background:#b42318;color:#fff;font-weight:700;cursor:pointer}.muted{color:#667085}#result{font-weight:650}
+  </style>
+</head>
+<body><main><section>
+  <h1>Famicare hesabını sil</h1>
+  <p>Bu işlem hesabınızı, sahip olduğunuz profilleri, ilaç kayıtlarını, sağlık ölçümlerini, randevuları ve ilgili uygulama verilerini kalıcı olarak siler.</p>
+  <p class="muted">Uygulamada Profil → Hesabımı ve Verilerimi Sil yolunu da kullanabilirsiniz.</p>
+  <form id="form">
+    <label for="phone">Telefon numarası</label>
+    <input id="phone" type="tel" autocomplete="tel" required placeholder="5XXXXXXXXX">
+    <label for="pin">PIN</label>
+    <input id="pin" type="password" inputmode="numeric" pattern="[0-9]{4,6}" maxlength="6" required>
+    <label for="confirmation">Onay metni</label>
+    <input id="confirmation" required placeholder="HESABIMI SİL">
+    <button type="submit">Hesabımı ve verilerimi kalıcı sil</button>
+  </form>
+  <p id="result" role="status"></p>
+  <p><a href="/privacy">Gizlilik Politikası</a></p>
+</section></main>
+<script>
+  document.getElementById('form').addEventListener('submit', async event => {
+    event.preventDefault();
+    const result = document.getElementById('result');
+    result.textContent = 'İşlem yapılıyor...';
+    try {
+      const response = await fetch('/api/v1/auth/delete-account', {
+        method:'POST', headers:{'Content-Type':'application/json'},
+        body:JSON.stringify({
+          phone:document.getElementById('phone').value,
+          pin:document.getElementById('pin').value,
+          confirmation:document.getElementById('confirmation').value,
+        }),
+      });
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.error || 'Hesap silinemedi');
+      document.getElementById('form').remove();
+      result.textContent = 'Hesabınız ve ilişkili uygulama verileriniz silindi.';
+    } catch (error) { result.textContent = error.message; }
+  });
+</script>
+</body>
+</html>
