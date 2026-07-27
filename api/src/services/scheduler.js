@@ -1,5 +1,5 @@
-import { db, uuid } from '../db.js';
-import { sendPush } from './push.js';
+import { db, uuid, pgPool } from '../db.js';
+import { sendPush, checkPushReceipts } from './push.js';
 
 const CHECK_INTERVAL = 5 * 60 * 1000;
 let intervalId = null;
@@ -43,8 +43,19 @@ function isMedicationActive(medication, date) {
 async function checkScheduledEvents() {
   if (isRunning) return;
   isRunning = true;
+  let lockClient = null;
   const now = new Date();
+  if (pgPool) {
+    lockClient = await pgPool.connect();
+    const lock = await lockClient.query('SELECT pg_try_advisory_lock(734221) AS acquired');
+    if (!lock.rows[0]?.acquired) {
+      lockClient.release();
+      isRunning = false;
+      return;
+    }
+  }
 
+  try {
   for (const medication of db.data.medications) {
     const profile = db.data.profiles.find(p => p.id === medication.profileId);
     const patient = db.data.users.find(u => u.id === (profile?.linkedUserId || medication.profileId));
@@ -55,7 +66,7 @@ async function checkScheduledEvents() {
     for (const scheduledTime of medication.times) {
       const [hour, minute] = scheduledTime.split(':').map(Number);
       const elapsed = local.minutes - (hour * 60 + minute);
-      if (elapsed < 30 || elapsed > 90) continue;
+      if (elapsed < 30 || elapsed > 24 * 60) continue;
 
       const log = db.data.medicationLogs.find(l =>
         l.medicationId === medication.id && l.date === local.date && l.scheduledTime === scheduledTime
@@ -78,6 +89,7 @@ async function checkScheduledEvents() {
         db.data.notifications.push({
           id: uuid(), userId: patient.id, type: 'missed_dose', doseKey,
           title: '⚠️ Doz Kaçırıldı', body: `${medication.name} - ${scheduledTime} dozunu almadınız.`,
+          data: { medicationId: medication.id, scheduledTime },
           isRead: false, createdAt: now.toISOString(),
         });
       }
@@ -87,6 +99,7 @@ async function checkScheduledEvents() {
         const notification = {
           id: uuid(), userId: profile.caregiverId, type: 'missed_dose', doseKey,
           title: `⚠️ ${patientName} ilacını almadı`, body: `${medication.name} - ${scheduledTime}`,
+          data: { medicationId: medication.id, scheduledTime, profileId: medication.profileId },
           isRead: false, createdAt: now.toISOString(),
         };
         db.data.notifications.push(notification);
@@ -95,10 +108,14 @@ async function checkScheduledEvents() {
     }
   }
 
-  try {
     await checkAppointmentReminders(now);
+    await checkPushReceipts();
     await db.write();
   } finally {
+    if (lockClient) {
+      await lockClient.query('SELECT pg_advisory_unlock(734221)').catch(() => {});
+      lockClient.release();
+    }
     isRunning = false;
   }
 }
@@ -108,16 +125,18 @@ async function checkAppointmentReminders(now) {
     if (appointment.status === 'cancelled' || !appointment.date || !appointment.time) continue;
     const target = new Date(`${appointment.date}T${appointment.time}:00+03:00`);
     const hoursUntil = (target.getTime() - now.getTime()) / 3600000;
-    if (hoursUntil < 23 || hoursUntil > 25) continue;
+    if (hoursUntil <= 0 || hoursUntil > 25) continue;
     const reminderKey = `appointment:${appointment.id}:24h`;
     if (db.data.notifications.some(n => n.reminderKey === reminderKey)) continue;
     const profile = db.data.profiles.find(p => p.id === appointment.profileId);
-    const recipients = [profile?.linkedUserId, profile?.caregiverId, appointment.profileId].filter(Boolean);
+    const recipients = [profile?.linkedUserId, profile?.caregiverId, appointment.profileId]
+      .filter(userId => userId && db.data.users.some(user => user.id === userId));
     for (const userId of new Set(recipients)) {
       const notification = {
         id: uuid(), userId, type: 'appointment', reminderKey,
         title: '🏥 Yarın randevunuz var',
         body: `${appointment.title} • ${appointment.time}${appointment.location ? ` • ${appointment.location}` : ''}`,
+        data: { appointmentId: appointment.id, profileId: appointment.profileId },
         isRead: false, createdAt: now.toISOString(),
       };
       db.data.notifications.push(notification);

@@ -77,6 +77,43 @@ export async function scheduleMedicationReminder(medId: string, name: string, ti
   } catch {}
 }
 
+export async function syncMedicationReminders(medications: Array<{ id: string; name: string; times?: string[]; isActive?: boolean }>) {
+  const desired = new Set(
+    medications
+      .filter(medication => medication.isActive !== false)
+      .flatMap(medication => (medication.times || []).map(time => doseNotificationId(medication.id, time)))
+  );
+  const scheduled = await Notifications.getAllScheduledNotificationsAsync();
+  await Promise.allSettled(
+    scheduled
+      .filter(notification => notification.identifier.startsWith('med_') && !desired.has(notification.identifier))
+      .map(notification => Notifications.cancelScheduledNotificationAsync(notification.identifier))
+  );
+  for (const medication of medications.filter(item => item.isActive !== false)) {
+    for (const time of medication.times || []) {
+      await scheduleMedicationReminder(medication.id, medication.name, time);
+    }
+  }
+}
+
+export async function cancelMedicationReminders(medId: string) {
+  const scheduled = await Notifications.getAllScheduledNotificationsAsync();
+  await Promise.allSettled(
+    scheduled
+      .filter(notification => notification.identifier.startsWith(`med_${medId}_`))
+      .map(notification => Notifications.cancelScheduledNotificationAsync(notification.identifier))
+  );
+}
+
+export async function clearAllMedicationReminders() {
+  const scheduled = await Notifications.getAllScheduledNotificationsAsync();
+  await Promise.allSettled(
+    scheduled
+      .filter(notification => notification.identifier.startsWith('med_'))
+      .map(notification => Notifications.cancelScheduledNotificationAsync(notification.identifier))
+  );
+}
+
 export async function schedulePostponedReminder(medId: string, name: string, timeString: string) {
   await Notifications.scheduleNotificationAsync({
     identifier: `${doseNotificationId(medId, timeString)}_postponed`,

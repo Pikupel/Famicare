@@ -6,8 +6,10 @@ import { typography } from '../src/theme/typography';
 import { spacing, borderRadius, shadow } from '../src/theme/spacing';
 import { api } from '../src/services/api';
 import { useAuthStore } from '../src/stores/useAuthStore';
+import { useThemedStyles } from '../src/theme/ThemeProvider';
 
 export default function DrugSafetyScreen() {
+  const styles = useThemedStyles(baseStyles);
   const router = useRouter();
   const userId = useAuthStore(state => state.userId);
   const [medications, setMedications] = useState<any[]>([]);
@@ -65,7 +67,7 @@ export default function DrugSafetyScreen() {
   );
 }
 
-const styles = StyleSheet.create({
+const baseStyles = StyleSheet.create({
   screen: { flex: 1, backgroundColor: colors.background },
   loading: { flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: colors.background },
   header: { paddingTop: 56, paddingHorizontal: spacing.lg, paddingBottom: spacing.md, backgroundColor: colors.surface },

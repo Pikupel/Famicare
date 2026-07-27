@@ -43,3 +43,29 @@ test('account deletion removes user data from current state and retained admin b
     db.data = originalData;
   }
 });
+
+test('linked patient deletion also removes the shared health profile and dependent data', () => {
+  const originalData = db.data;
+  db.data = {
+    users: [{ id: 'patient' }, { id: 'caregiver' }],
+    profiles: [{ id: 'shared', caregiverId: 'caregiver', linkedUserId: 'patient' }],
+    medications: [{ id: 'med', profileId: 'shared' }],
+    medicationLogs: [{ id: 'log', profileId: 'shared' }],
+    appointments: [{ id: 'appointment', profileId: 'shared' }],
+    healthRecords: [{ id: 'health', profileId: 'shared' }],
+    emergencies: [{ id: 'emergency', profileId: 'shared' }],
+    emergencyContacts: [], notifications: [], authSessions: [], pushDeliveries: [],
+    adminAuditLogs: [], adminBackups: [],
+  };
+  try {
+    const result = removeUserFromState('patient');
+    assert.equal(result.profileIds.includes('shared'), true);
+    assert.equal(db.data.users.some(user => user.id === 'caregiver'), true);
+    assert.equal(db.data.profiles.length, 0);
+    assert.equal(db.data.medications.length, 0);
+    assert.equal(db.data.medicationLogs.length, 0);
+    assert.equal(db.data.healthRecords.length, 0);
+  } finally {
+    db.data = originalData;
+  }
+});

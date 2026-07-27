@@ -2,6 +2,7 @@ import { Stack, router } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { useEffect } from 'react';
 import * as Notifications from 'expo-notifications';
+import { ThemeProvider, useTheme } from '../src/theme/ThemeProvider';
 
 Notifications.setNotificationHandler({
   handleNotification: async () => ({
@@ -12,7 +13,8 @@ Notifications.setNotificationHandler({
   }),
 });
 
-export default function RootLayout() {
+function NavigationRoot() {
+  const { isDark, colors } = useTheme();
   useEffect(() => {
     const open = (notification: Notifications.Notification) => {
       const url = notification.request.content.data?.url;
@@ -25,8 +27,12 @@ export default function RootLayout() {
   }, []);
   return (
     <>
-      <StatusBar style="dark" />
-      <Stack screenOptions={{ headerShown: false, animation: 'slide_from_right' }} />
+      <StatusBar style={isDark ? 'light' : 'dark'} />
+      <Stack screenOptions={{ headerShown: false, animation: 'slide_from_right', contentStyle: { backgroundColor: colors.background } }} />
     </>
   );
+}
+
+export default function RootLayout() {
+  return <ThemeProvider><NavigationRoot /></ThemeProvider>;
 }

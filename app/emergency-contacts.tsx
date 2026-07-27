@@ -7,8 +7,10 @@ import { typography } from '../src/theme/typography';
 import { spacing, borderRadius } from '../src/theme/spacing';
 import { Button } from '../src/components/Button';
 import { api } from '../src/services/api';
+import { useThemedStyles } from '../src/theme/ThemeProvider';
 
 export default function EmergencyContactsScreen() {
+  const styles = useThemedStyles(baseStyles);
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const [contacts, setContacts] = useState<any[]>([]);
@@ -18,7 +20,8 @@ export default function EmergencyContactsScreen() {
   const [saving, setSaving] = useState(false);
 
   useFocusEffect(useCallback(() => {
-    api.get<any[]>('/emergency-contacts').then(setContacts).catch(() => {});
+    api.get<any[]>('/emergency-contacts').then(setContacts)
+      .catch((error: any) => Alert.alert('Kişiler yüklenemedi', error?.message || 'Lütfen tekrar deneyin.'));
   }, []));
 
   const add = async () => {
@@ -89,7 +92,7 @@ export default function EmergencyContactsScreen() {
     </View>
   );
 }
-const styles = StyleSheet.create({
+const baseStyles = StyleSheet.create({
   card: { flexDirection: 'row', alignItems: 'center', backgroundColor: colors.surface, borderRadius: borderRadius.card, padding: 14, marginBottom: spacing.sm },
   avatar: { width: 44, height: 44, borderRadius: 22, backgroundColor: colors.primaryLight + '30', alignItems: 'center', justifyContent: 'center', marginRight: spacing.md },
   input: { backgroundColor: colors.surface, borderRadius: borderRadius.input, paddingHorizontal: 16, paddingVertical: 14, fontSize: 16, color: colors.text, borderWidth: 1, borderColor: colors.border, marginBottom: spacing.sm },

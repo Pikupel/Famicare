@@ -4,8 +4,9 @@ import { colors } from '../src/theme/colors';
 import { typography } from '../src/theme/typography';
 import { spacing, borderRadius } from '../src/theme/spacing';
 import { useAuthStore } from '../src/stores/useAuthStore';
+import { useThemedStyles } from '../src/theme/ThemeProvider';
 
-const PROFILES = [
+const getProfiles = () => [
   { id: 'self', icon: '🙋', label: 'Kendim', desc: 'Kendi sağlığımı takip et', role: 'elderly' as const, color: colors.primary },
   { id: 'child', icon: '🧒', label: 'Çocuğum', desc: 'Çocuğumun ilaçlarını yönet', role: 'caregiver' as const, color: colors.secondary },
   { id: 'mother', icon: '👩‍🦳', label: 'Annem', desc: 'Annemin sağlığını takip et', role: 'caregiver' as const, color: colors.tertiary },
@@ -15,6 +16,7 @@ const PROFILES = [
 ];
 
 export default function WelcomeScreen() {
+  const styles = useThemedStyles(baseStyles);
   const router = useRouter();
   const setRole = useAuthStore((s) => s.setRole);
 
@@ -26,7 +28,7 @@ export default function WelcomeScreen() {
       </View>
 
       <View style={{ flexDirection: 'row', flexWrap: 'wrap', paddingHorizontal: spacing.md, gap: spacing.sm }}>
-        {PROFILES.map((p) => (
+        {getProfiles().map((p) => (
           <TouchableOpacity key={p.id} style={[styles.card, { borderColor: p.color + '40' }]} onPress={() => { setRole(p.role); router.push('/login'); }}>
             <Text style={{ fontSize: 36, marginBottom: spacing.sm }}>{p.icon}</Text>
             <Text style={{ ...typography.body, fontWeight: '600', color: colors.text, textAlign: 'center' }}>{p.label}</Text>
@@ -43,6 +45,6 @@ export default function WelcomeScreen() {
   );
 }
 
-const styles = StyleSheet.create({
+const baseStyles = StyleSheet.create({
   card: { width: '48%', backgroundColor: colors.surface, borderRadius: borderRadius.card, padding: 20, alignItems: 'center', borderWidth: 1.5, minHeight: 140, shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.04, shadowRadius: 6, elevation: 2 },
 });

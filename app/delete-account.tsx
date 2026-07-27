@@ -7,8 +7,10 @@ import { spacing, borderRadius } from '../src/theme/spacing';
 import { Button } from '../src/components/Button';
 import { api } from '../src/services/api';
 import { useAuthStore } from '../src/stores/useAuthStore';
+import { useThemedStyles } from '../src/theme/ThemeProvider';
 
 export default function DeleteAccountScreen() {
+  const styles = useThemedStyles(baseStyles);
   const router = useRouter();
   const logout = useAuthStore(state => state.logout);
   const [pin, setPin] = useState('');
@@ -67,7 +69,7 @@ export default function DeleteAccountScreen() {
   );
 }
 
-const styles = StyleSheet.create({
+const baseStyles = StyleSheet.create({
   screen: { flex: 1, backgroundColor: colors.background },
   header: { paddingTop: 56, paddingHorizontal: spacing.lg, paddingBottom: spacing.md, backgroundColor: colors.surface },
   back: { minHeight: 48, justifyContent: 'center' },

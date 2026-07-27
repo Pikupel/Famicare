@@ -1,5 +1,14 @@
 # Famicare mağaza yayın kontrol listesi
 
+## Production ortamı
+
+- [ ] `DATABASE_URL`, `JWT_SECRET`, admin değişkenleri ve `CORS_ORIGINS` tanımlandı.
+- [ ] `SMS_WEBHOOK_URL` ve gerekiyorsa `SMS_WEBHOOK_TOKEN` tanımlandı; gerçek doğrulama SMS’i alındı.
+- [ ] APK testi sırasında gerekirse `ALLOW_UNVERIFIED_REGISTRATION=true` kullanıldı; mağaza/production yayını öncesinde değişken silindi veya `false` yapıldı.
+- [ ] EAS production buildine `EXPO_PUBLIC_API_URL` verildi.
+- [ ] `api/db.json` yalnızca son committen değil Git geçmişinden de kaldırıldı.
+- [ ] Eski repository geçmişinde görünen kullanıcı verileri için gerekli PIN/oturum sıfırlama ve bildirim değerlendirmesi yapıldı.
+
 ## Hazır teknik bağlantılar
 
 - Gizlilik politikası: `https://famicare-production-f63d.up.railway.app/privacy`

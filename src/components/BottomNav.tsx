@@ -1,9 +1,8 @@
 import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { useAuthStore } from '../stores/useAuthStore';
 import { colors } from '../theme/colors';
-import { typography } from '../theme/typography';
+import { useThemedStyles } from '../theme/ThemeProvider';
 
 interface NavItem {
   label: string;
@@ -17,6 +16,7 @@ interface BottomNavProps {
 }
 
 export function BottomNav({ items, activeIndex }: BottomNavProps) {
+  const styles = useThemedStyles(baseStyles);
   const router = useRouter();
   const insets = useSafeAreaInsets();
 
@@ -41,7 +41,7 @@ export function BottomNav({ items, activeIndex }: BottomNavProps) {
   );
 }
 
-const styles = StyleSheet.create({
+const baseStyles = StyleSheet.create({
   container: {
     flexDirection: 'row',
     backgroundColor: colors.surface,

@@ -26,10 +26,4 @@ router.get('/search', (req, res) => {
     })));
 });
 
-router.get('/barcode/:barcode', (req, res) => {
-  const drug = (db.data.drugReferences || []).find(item => item.barkod === req.params.barcode);
-  if (!drug) return res.status(404).json({ error: 'Bulunamadı' });
-  res.json(drug);
-});
-
 export default router;

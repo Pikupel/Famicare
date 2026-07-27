@@ -7,9 +7,10 @@ const router = Router();
 router.use(authMiddleware);
 
 router.get('/profile/:profileId', (req, res) => {
-  if (!requireProfileAccess(req, res, req.params.profileId)) return;
+  const profile = requireProfileAccess(req, res, req.params.profileId);
+  if (!profile) return;
   const { type } = req.query;
-  let records = db.data.healthRecords.filter(r => r.profileId === req.params.profileId);
+  let records = db.data.healthRecords.filter(r => r.profileId === profile.id);
   if (type) records = records.filter(r => r.recordType === type);
   records.sort((a, b) => new Date(b.measuredAt) - new Date(a.measuredAt));
   res.json(records);
@@ -18,12 +19,13 @@ router.get('/profile/:profileId', (req, res) => {
 router.post('/', async (req, res) => {
   const { profileId, recordType, valueData, measuredAt } = req.body;
   if (!profileId || !recordType) return res.status(400).json({ error: 'Profil ID ve tip gerekli' });
-  if (!requireProfileAccess(req, res, profileId)) return;
+  const profile = requireProfileAccess(req, res, profileId);
+  if (!profile) return;
   if (!['blood_pressure', 'blood_sugar', 'weight'].includes(recordType)) return res.status(400).json({ error: 'Geçersiz ölçüm tipi' });
   const validationError = validateHealthValue(recordType, valueData);
   if (validationError) return res.status(400).json({ error: validationError });
   const record = {
-    id: uuid(), profileId, recordType, valueData: valueData || {},
+    id: uuid(), profileId: profile.id, recordType, valueData: valueData || {},
     measuredAt: measuredAt && !Number.isNaN(Date.parse(measuredAt)) ? new Date(measuredAt).toISOString() : new Date().toISOString(),
     recordedBy: req.user.id,
   };

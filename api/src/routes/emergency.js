@@ -1,12 +1,13 @@
 import { Router } from 'express';
 import { db, uuid } from '../db.js';
 import { authMiddleware } from '../middleware/auth.js';
-import { requireProfileAccess, canManageRecord } from '../middleware/access.js';
+import { requireProfileAccess, canManageRecord, requireRole } from '../middleware/access.js';
 import { sendPush } from '../services/push.js';
 
 const router = Router();
 
 router.post('/', authMiddleware, async (req, res) => {
+  if (!requireRole(req, res, 'elderly')) return;
   const { profileId, locationLat, locationLng } = req.body;
   const linkedProfile = db.data.profiles.find(p => p.linkedUserId === req.user.id);
   const targetProfileId = profileId === req.user.id && linkedProfile ? linkedProfile.id : (profileId || linkedProfile?.id || req.user.id);
@@ -14,7 +15,7 @@ router.post('/', authMiddleware, async (req, res) => {
   if (!profile) return;
   const emergency = {
     id: uuid(), profileId: targetProfileId,
-    status: 'active', triggeredBy: 'elderly',
+    status: 'active', triggeredBy: req.user.id,
     locationLat: locationLat || null, locationLng: locationLng || null,
     notifiedAt: new Date().toISOString(), resolvedAt: null, resolvedBy: null, note: '',
     createdAt: new Date().toISOString(),
@@ -38,7 +39,11 @@ router.get('/', authMiddleware, (req, res) => {
 });
 
 router.put('/:id', authMiddleware, async (req, res) => {
+  if (!requireRole(req, res, 'caregiver')) return;
   const { status, note } = req.body;
+  if (status && !['active', 'acknowledged', 'resolved'].includes(status)) {
+    return res.status(400).json({ error: 'Geçersiz acil durum statüsü' });
+  }
   const { record } = canManageRecord(req.user, 'emergencies', req.params.id);
   if (!record) return res.status(404).json({ error: 'Kayıt bulunamadı' });
   const idx = db.data.emergencies.findIndex(e => e.id === req.params.id);

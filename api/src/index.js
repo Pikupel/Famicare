@@ -21,12 +21,18 @@ import notificationRoutes from './routes/notifications.js';
 import dashboardRoutes from './routes/dashboard.js';
 
 const app = express();
+app.set('trust proxy', 1);
 const PORT = process.env.PORT || 3001;
 
 const allowedOrigins = (process.env.CORS_ORIGINS || '').split(',').map(value => value.trim()).filter(Boolean);
+if (process.env.RAILWAY_PUBLIC_DOMAIN) {
+  allowedOrigins.push(`https://${process.env.RAILWAY_PUBLIC_DOMAIN}`);
+}
 app.use(cors({
   origin(origin, callback) {
-    if (!origin || !allowedOrigins.length || allowedOrigins.includes(origin)) return callback(null, true);
+    if (!origin) return callback(null, true);
+    if (allowedOrigins.includes(origin)) return callback(null, true);
+    if (process.env.NODE_ENV !== 'production' && !allowedOrigins.length) return callback(null, true);
     callback(new Error('CORS origin reddedildi'));
   },
 }));
@@ -59,11 +65,15 @@ app.get('/privacy', (req, res) => {
   res.sendFile(join(publicDir, 'privacy.html'));
 });
 app.get('/delete-account', (req, res) => {
-  res.setHeader('Content-Security-Policy', "default-src 'self'; style-src 'self' 'unsafe-inline'; script-src 'self' 'unsafe-inline'; object-src 'none'; base-uri 'none'; frame-ancestors 'none'");
+  res.setHeader('Content-Security-Policy', "default-src 'self'; style-src 'self' 'unsafe-inline'; script-src 'self'; connect-src 'self'; form-action 'self'; object-src 'none'; base-uri 'none'; frame-ancestors 'none'");
   res.setHeader('Cache-Control', 'no-store');
   res.setHeader('X-Content-Type-Options', 'nosniff');
   res.setHeader('Referrer-Policy', 'no-referrer');
   res.sendFile(join(publicDir, 'delete-account.html'));
+});
+app.get('/delete-account.js', (req, res) => {
+  res.setHeader('Cache-Control', 'no-store');
+  res.type('application/javascript').sendFile(join(publicDir, 'delete-account.js'));
 });
 app.use('/admin', (req, res, next) => {
   res.setHeader('Content-Security-Policy', "default-src 'self'; style-src 'self' 'unsafe-inline'; script-src 'self' 'unsafe-inline'; object-src 'none'; base-uri 'none'; frame-ancestors 'none'");
@@ -75,6 +85,9 @@ app.use('/api/v1/notifications', notificationRoutes);
 app.use('/api/v1/dashboard', dashboardRoutes);
 
 await initDb();
+if (process.env.ALLOW_UNVERIFIED_REGISTRATION === 'true') {
+  console.warn('[SECURITY] SMS doğrulaması devre dışı: ALLOW_UNVERIFIED_REGISTRATION=true');
+}
 startScheduler();
 app.listen(PORT, () => {
   console.log(`Famicare API running on http://localhost:${PORT}`);

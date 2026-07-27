@@ -8,7 +8,8 @@ import { spacing, borderRadius, shadow } from '../src/theme/spacing';
 import { useAuthStore } from '../src/stores/useAuthStore';
 import { BottomNav } from '../src/components/BottomNav';
 import { api } from '../src/services/api';
-import { useTheme } from '../src/theme/ThemeProvider';
+import { useTheme, useThemedStyles } from '../src/theme/ThemeProvider';
+import { clearAllMedicationReminders } from '../src/services/notifications';
 
 const AVATAR_EMOJI: Record<string, string> = {
   elderly_woman: '👵', elderly_man: '👴', elderly_hijabi: '🧕',
@@ -17,23 +18,33 @@ const AVATAR_EMOJI: Record<string, string> = {
 };
 
 export default function ProfileScreen() {
+  const styles = useThemedStyles(baseStyles);
   const router = useRouter();
   const params = useLocalSearchParams();
   const userName = useAuthStore((s) => s.userName);
   const userId = useAuthStore((s) => s.userId);
   const role = useAuthStore((s) => s.role);
   const logout = useAuthStore((s) => s.logout);
-  const { theme, toggleTheme, isDark } = useTheme();
+  const refreshToken = useAuthStore((s) => s.refreshToken);
+  const { toggleTheme, isDark, colors: themeColors } = useTheme();
   const homeRoute = role === 'caregiver' ? '/caregiver' : '/home';
   const [avatarEmoji, setAvatarEmoji] = useState('👤');
-  const [bloodType, setBloodType] = useState('A Rh+');
+  const [bloodType, setBloodType] = useState('Eklenmedi');
+  const [latestWeight, setLatestWeight] = useState('Eklenmedi');
 
   useEffect(() => {
     AsyncStorage.getItem('famicare_avatar').then(a => {
       if (a && AVATAR_EMOJI[a]) setAvatarEmoji(AVATAR_EMOJI[a]);
     });
     AsyncStorage.getItem('famicare_bloodtype').then(b => { if (b) setBloodType(b); });
-  }, []);
+    if (userId) {
+      api.get<any[]>(`/health/profile/${userId}?type=weight`).then(records => {
+        const latest = records.sort((a, b) => new Date(b.measuredAt).getTime() - new Date(a.measuredAt).getTime())[0];
+        const value = latest?.valueData?.weight;
+        if (value !== undefined && value !== null && value !== '') setLatestWeight(`${value} kg`);
+      }).catch(() => {});
+    }
+  }, [userId]);
   const NAV = role === 'caregiver' ? [
     { label: 'Ana Sayfa', icon: '⌂', route: '/caregiver' },
     { label: 'Profil', icon: '◉', route: '' },
@@ -46,8 +57,8 @@ export default function ProfileScreen() {
   const isCaregiverView = role === 'caregiver' && !!params.name;
 
   return (
-    <View style={{ flex: 1, backgroundColor: isDark ? '#0B1C30' : colors.background }}>
-      <View style={{ paddingTop: 56, paddingHorizontal: spacing.lg, paddingBottom: spacing.md, backgroundColor: isDark ? '#1E293B' : colors.surface }}>
+    <View style={{ flex: 1, backgroundColor: themeColors.background }}>
+      <View style={{ paddingTop: 56, paddingHorizontal: spacing.lg, paddingBottom: spacing.md, backgroundColor: themeColors.surface }}>
         <TouchableOpacity onPress={() => router.push(homeRoute)} style={{ minHeight: 48, justifyContent: 'center' }}>
           <Text style={{ fontSize: 28, color: isDark ? '#EAF1FF' : colors.text }}>←</Text>
         </TouchableOpacity>
@@ -69,7 +80,7 @@ export default function ProfileScreen() {
         </View>
 
         {isCaregiverView && (
-          <><View style={[styles.section, shadow.card]}>
+          <><View style={[styles.section, { backgroundColor: themeColors.surface }, shadow.card]}>
             <Text style={{ ...typography.h3, color: colors.text, marginBottom: spacing.sm }}>Hızlı İşlemler</Text>
             <View style={{ backgroundColor: colors.primaryLight + '15', borderRadius: 12, padding: 12, marginBottom: spacing.sm }}>
               <Text style={{ ...typography.caption, color: colors.textSecondary }}>Davet Kodu</Text>
@@ -117,10 +128,10 @@ export default function ProfileScreen() {
 
           {!isCaregiverView && (
           <>
-            <View style={[styles.section, shadow.card]}>
+            <View style={[styles.section, { backgroundColor: themeColors.surface }, shadow.card]}>
               <Text style={{ ...typography.h3, color: colors.text, marginBottom: spacing.sm }}>Vital Bulgular</Text>
               <View style={{ flexDirection: 'row', gap: spacing.sm }}>
-                {[{ icon: '🩸', label: 'Kan Grubu', value: bloodType }, { icon: '📏', label: 'Boy', value: '178 cm' }, { icon: '⚖️', label: 'Kilo', value: '82 kg' }].map((v, i) => (
+                {[{ icon: '🩸', label: 'Kan Grubu', value: bloodType }, { icon: '📏', label: 'Boy', value: 'Eklenmedi' }, { icon: '⚖️', label: 'Kilo', value: latestWeight }].map((v, i) => (
                   <View key={i} style={{ flex: 1, alignItems: 'center', padding: 12, backgroundColor: colors.surfaceVariant + '40', borderRadius: 12 }}>
                     <Text style={{ fontSize: 22, marginBottom: 4 }}>{v.icon}</Text>
                     <Text style={{ ...typography.h3, color: colors.text }}>{v.value}</Text>
@@ -129,7 +140,7 @@ export default function ProfileScreen() {
                 ))}
               </View>
             </View>
-            <View style={[styles.section, shadow.card]}>
+            <View style={[styles.section, { backgroundColor: themeColors.surface }, shadow.card]}>
               <Text style={{ ...typography.h3, color: colors.text, marginBottom: spacing.sm }}>Hızlı İşlemler</Text>
               <TouchableOpacity style={styles.action} onPress={() => router.push('/add-medication')}>
                 <Text style={{ fontSize: 18, marginRight: spacing.md }}>➕</Text>
@@ -164,18 +175,23 @@ export default function ProfileScreen() {
             <TouchableOpacity style={styles.deleteBtn} onPress={() => router.push('/delete-account')}>
               <Text style={{ ...typography.button, color: colors.danger }}>Hesabımı ve Verilerimi Sil</Text>
             </TouchableOpacity>
-            <TouchableOpacity style={styles.logoutBtn} onPress={async () => { logout(); router.replace('/welcome'); }}>
+            <TouchableOpacity style={styles.logoutBtn} onPress={async () => {
+              if (refreshToken) await api.post('/auth/logout', { refreshToken }).catch(() => {});
+              await clearAllMedicationReminders();
+              logout();
+              router.replace('/welcome');
+            }}>
               <Text style={{ ...typography.button, color: colors.danger }}>Çıkış Yap</Text>
             </TouchableOpacity>
           </>
         )}
       </ScrollView>
 
-      <BottomNav items={NAV} activeIndex={3} />
+      <BottomNav items={NAV} activeIndex={NAV.length - 1} />
     </View>
   );
 }
-const styles = StyleSheet.create({
+const baseStyles = StyleSheet.create({
   section: { backgroundColor: colors.surface, borderRadius: borderRadius.card, padding: 16, marginBottom: spacing.md },
   action: { flexDirection: 'row', alignItems: 'center', paddingVertical: 14, borderBottomWidth: 1, borderBottomColor: colors.border, minHeight: 48 },
   helpBtn: { marginTop: spacing.lg, padding: 16, alignItems: 'center', borderWidth: 1, borderColor: colors.border, borderRadius: borderRadius.button, minHeight: 48, justifyContent: 'center' },

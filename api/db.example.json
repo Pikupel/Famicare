@@ -1,0 +1,19 @@
+{
+  "users": [],
+  "profiles": [],
+  "medications": [],
+  "medicationLogs": [],
+  "appointments": [],
+  "healthRecords": [],
+  "emergencies": [],
+  "emergencyContacts": [],
+  "notifications": [],
+  "drugReferences": [],
+  "lastImportDate": "",
+  "inviteAttempts": {},
+  "adminAuditLogs": [],
+  "adminBackups": [],
+  "pushDeliveries": [],
+  "authSessions": [],
+  "phoneVerifications": []
+}

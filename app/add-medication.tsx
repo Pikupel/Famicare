@@ -9,8 +9,10 @@ import { Button } from '../src/components/Button';
 import { api } from '../src/services/api';
 import { useAuthStore } from '../src/stores/useAuthStore';
 import { DrugSearch } from '../src/components/DrugSearch';
+import { useThemedStyles } from '../src/theme/ThemeProvider';
 
 export default function AddMedicationScreen() {
+  const styles = useThemedStyles(baseStyles);
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const { profileId } = useLocalSearchParams<{ profileId?: string }>();
@@ -22,6 +24,7 @@ export default function AddMedicationScreen() {
   const [purpose, setPurpose] = useState('');
   const [endDate, setEndDate] = useState('');
   const [stockTotal, setStockTotal] = useState('');
+  const [unitsPerDose, setUnitsPerDose] = useState('1');
   const [drugRefId, setDrugRefId] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
 
@@ -38,7 +41,7 @@ export default function AddMedicationScreen() {
     setSaving(true);
     const targetProfileId = profileId || userId || 'default';
     try {
-      await api.post('/medications', { profileId: targetProfileId, name, dosage, instructions: instruction, times, endDate, purpose, stockTotal: stockTotal ? Number(stockTotal) : undefined, drugRefId });
+      await api.post('/medications', { profileId: targetProfileId, name, dosage, instructions: instruction, times, endDate, purpose, stockTotal: stockTotal ? Number(stockTotal) : undefined, unitsPerDose: Number(unitsPerDose) || 1, drugRefId });
       Alert.alert('Başarılı', 'İlaç eklendi');
       router.back();
     } catch (e: any) { Alert.alert('Hata', e.message); }
@@ -81,6 +84,8 @@ export default function AddMedicationScreen() {
 
         <Text style={styles.label}>Kutudaki Toplam Adet (isteğe bağlı)</Text>
         <TextInput style={styles.input} value={stockTotal} onChangeText={(v) => setStockTotal(v.replace(/[^0-9]/g, ''))} placeholder="Örn: 100" keyboardType="numeric" />
+        <Text style={styles.label}>Her kullanımda düşülecek adet</Text>
+        <TextInput style={styles.input} value={unitsPerDose} onChangeText={(v) => setUnitsPerDose(v.replace(/[^0-9.]/g, ''))} placeholder="Örn: 1" keyboardType="decimal-pad" />
         <Text style={styles.label}>Bitiş Tarihi (isteğe bağlı)</Text>
         <TextInput style={styles.input} value={endDate} onChangeText={(v) => setEndDate(v.replace(/[^0-9.]/g, ''))} placeholder="GG.AA.YYYY" keyboardType="numeric" maxLength={10} />
 
@@ -90,7 +95,7 @@ export default function AddMedicationScreen() {
     </KeyboardAvoidingView>
   );
 }
-const styles = StyleSheet.create({
+const baseStyles = StyleSheet.create({
   scanner: { flexDirection: 'row', alignItems: 'center', backgroundColor: colors.surface, borderRadius: borderRadius.card, padding: 20, marginBottom: spacing.lg, borderWidth: 2, borderColor: colors.primary, borderStyle: 'dashed' },
   label: { ...typography.body, color: colors.text, marginBottom: spacing.xs, marginTop: spacing.md },
   input: { backgroundColor: colors.surface, borderRadius: borderRadius.input, paddingHorizontal: 16, paddingVertical: 14, fontSize: 16, color: colors.text, borderWidth: 1, borderColor: colors.border, marginBottom: spacing.sm },

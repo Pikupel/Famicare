@@ -1,13 +1,13 @@
 import { useState } from 'react';
-import { View, Text, TextInput, TouchableOpacity, StyleSheet, ScrollView, Alert, Linking, Platform } from 'react-native';
+import { View, Text, TextInput, TouchableOpacity, StyleSheet, ScrollView, Alert, Linking } from 'react-native';
 import { useRouter, useLocalSearchParams } from 'expo-router';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { colors } from '../src/theme/colors';
 import { typography } from '../src/theme/typography';
 import { spacing, borderRadius } from '../src/theme/spacing';
 import { Button } from '../src/components/Button';
 import { api } from '../src/services/api';
 import { useAuthStore } from '../src/stores/useAuthStore';
+import { useThemedStyles } from '../src/theme/ThemeProvider';
 
 function maskDate(v: string) {
   const digits = v.replace(/\D/g, '').slice(0, 8);
@@ -23,8 +23,8 @@ function maskTime(v: string) {
 }
 
 export default function AddAppointmentScreen() {
+  const styles = useThemedStyles(baseStyles);
   const router = useRouter();
-  const insets = useSafeAreaInsets();
   const userId = useAuthStore((s) => s.userId);
   const { id, profileId, editTitle, editLocation, editDoctor, editDate, editTime, editNotes } = useLocalSearchParams();
   const isEdit = !!id;
@@ -65,7 +65,10 @@ export default function AddAppointmentScreen() {
   const handleDelete = () => {
     Alert.alert('Sil', 'Emin misiniz?', [
       { text: 'İptal', style: 'cancel' },
-      { text: 'Sil', style: 'destructive', onPress: async () => { try { await api.del(`/appointments/${id}`); } catch {}; router.back(); }},
+      { text: 'Sil', style: 'destructive', onPress: async () => {
+        try { await api.del(`/appointments/${id}`); router.back(); }
+        catch (error: any) { Alert.alert('Randevu silinemedi', error?.message || 'Lütfen tekrar deneyin.'); }
+      }},
     ]);
   };
 
@@ -107,7 +110,7 @@ export default function AddAppointmentScreen() {
   );
 }
 
-const styles = StyleSheet.create({
+const baseStyles = StyleSheet.create({
   mhrsBtn: { flexDirection: 'row', alignItems: 'center', backgroundColor: colors.primary, borderRadius: 16, padding: 16, marginBottom: spacing.lg },
   label: { ...typography.caption, color: colors.textSecondary, marginBottom: spacing.xs, marginTop: spacing.md },
   input: { backgroundColor: colors.surface, borderRadius: borderRadius.input, paddingHorizontal: 16, paddingVertical: 14, fontSize: 16, color: colors.text, borderWidth: 1, borderColor: colors.border, marginBottom: spacing.sm, minHeight: 48 },

@@ -1,5 +1,5 @@
 import { useState, useCallback } from 'react';
-import { View, Text, TouchableOpacity, StyleSheet, ScrollView, ActivityIndicator, RefreshControl } from 'react-native';
+import { View, Text, TouchableOpacity, StyleSheet, ScrollView, ActivityIndicator, RefreshControl, Alert } from 'react-native';
 import { useRouter, useFocusEffect, useLocalSearchParams } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { colors } from '../src/theme/colors';
@@ -7,6 +7,7 @@ import { typography } from '../src/theme/typography';
 import { spacing, borderRadius, shadow } from '../src/theme/spacing';
 import { api } from '../src/services/api';
 import { useAuthStore } from '../src/stores/useAuthStore';
+import { useThemedStyles } from '../src/theme/ThemeProvider';
 
 const MONTHS = ['Ocak', 'Şubat', 'Mart', 'Nisan', 'Mayıs', 'Haziran', 'Temmuz', 'Ağustos', 'Eylül', 'Ekim', 'Kasım', 'Aralık'];
 
@@ -17,22 +18,30 @@ function toLocalDate(isoDate: string) {
 }
 
 export default function AppointmentsScreen() {
+  const styles = useThemedStyles(baseStyles);
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const userId = useAuthStore((s) => s.userId);
   const searchParams = useLocalSearchParams();
   const profileId = String(searchParams.profileId || userId || '');
   const [month, setMonth] = useState(new Date().getMonth());
+  const [year, setYear] = useState(new Date().getFullYear());
   const [selected, setSelected] = useState(new Date().getDate());
   const [appointments, setAppointments] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
-  const year = new Date().getFullYear();
   const days = Array.from({ length: new Date(year, month + 1, 0).getDate() }, (_, i) => i + 1);
+  const changeMonth = (delta: number) => {
+    const next = new Date(year, month + delta, 1);
+    setYear(next.getFullYear());
+    setMonth(next.getMonth());
+    setSelected(1);
+  };
 
   const loadData = useCallback(async () => {
     if (!profileId) { setLoading(false); return; }
-    try { const d = await api.get<any[]>(`/appointments/profile/${profileId}`); setAppointments(d); } catch {}
+    try { const d = await api.get<any[]>(`/appointments/profile/${profileId}`); setAppointments(d); }
+    catch (error: any) { Alert.alert('Randevular yüklenemedi', error?.message || 'Lütfen tekrar deneyin.'); }
     setLoading(false); setRefreshing(false);
   }, [profileId]);
 
@@ -52,9 +61,9 @@ export default function AppointmentsScreen() {
 
       <View style={[styles.calendarCard, shadow.card]}>
         <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: spacing.md }}>
-          <TouchableOpacity onPress={() => setMonth(m => Math.max(0, m - 1))} style={{ minWidth: 44, minHeight: 44, alignItems: 'center', justifyContent: 'center' }}><Text style={{ fontSize: 22, color: colors.primary }}>‹</Text></TouchableOpacity>
+          <TouchableOpacity onPress={() => changeMonth(-1)} style={{ minWidth: 44, minHeight: 44, alignItems: 'center', justifyContent: 'center' }}><Text style={{ fontSize: 22, color: colors.primary }}>‹</Text></TouchableOpacity>
           <Text style={{ ...typography.h3, color: colors.text }}>{MONTHS[month]} {year}</Text>
-          <TouchableOpacity onPress={() => setMonth(m => Math.min(11, m + 1))} style={{ minWidth: 44, minHeight: 44, alignItems: 'center', justifyContent: 'center' }}><Text style={{ fontSize: 22, color: colors.primary }}>›</Text></TouchableOpacity>
+          <TouchableOpacity onPress={() => changeMonth(1)} style={{ minWidth: 44, minHeight: 44, alignItems: 'center', justifyContent: 'center' }}><Text style={{ fontSize: 22, color: colors.primary }}>›</Text></TouchableOpacity>
         </View>
 
         <View style={{ flexDirection: 'row', marginBottom: spacing.sm }}>
@@ -122,7 +131,7 @@ export default function AppointmentsScreen() {
     </View>
   );
 }
-const styles = StyleSheet.create({
+const baseStyles = StyleSheet.create({
   calendarCard: { backgroundColor: colors.surface, borderRadius: borderRadius.card, padding: 20, marginHorizontal: spacing.lg, marginTop: spacing.md },
   day: { width: '14.28%', aspectRatio: 1, alignItems: 'center', justifyContent: 'center', borderRadius: 20, minHeight: 44 },
   dot: { width: 5, height: 5, borderRadius: 3, marginTop: 2 },

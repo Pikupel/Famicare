@@ -1,5 +1,5 @@
 import { useState, useCallback } from 'react';
-import { View, Text, TouchableOpacity, StyleSheet, ScrollView, ActivityIndicator, RefreshControl } from 'react-native';
+import { View, Text, TouchableOpacity, StyleSheet, ScrollView, ActivityIndicator, RefreshControl, Alert } from 'react-native';
 import { useRouter, useFocusEffect, useLocalSearchParams } from 'expo-router';
 import { colors } from '../src/theme/colors';
 import { typography } from '../src/theme/typography';
@@ -8,8 +8,10 @@ import { api } from '../src/services/api';
 import { useAuthStore } from '../src/stores/useAuthStore';
 import { EmptyState } from '../src/components/EmptyState';
 import { BottomNav } from '../src/components/BottomNav';
+import { useThemedStyles } from '../src/theme/ThemeProvider';
 
 export default function MedicationScreen() {
+  const styles = useThemedStyles(baseStyles);
   const router = useRouter();
   const params = useLocalSearchParams();
   const userId = useAuthStore((s) => s.userId);
@@ -32,7 +34,9 @@ export default function MedicationScreen() {
     try {
       const data = await api.get<any[]>(`/medications/profile/${profileId}`);
       setMedications(data);
-    } catch {}
+    } catch (error: any) {
+      Alert.alert('İlaçlar yüklenemedi', error?.message || 'Lütfen tekrar deneyin.');
+    }
     setLoading(false);
     setRefreshing(false);
   }, [profileId]);
@@ -77,7 +81,7 @@ export default function MedicationScreen() {
     </View>
   );
 }
-const styles = StyleSheet.create({
+const baseStyles = StyleSheet.create({
   card: { flexDirection: 'row', alignItems: 'center', backgroundColor: colors.surface, borderRadius: borderRadius.card, padding: 16, marginHorizontal: spacing.lg, marginBottom: spacing.sm },
   addBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', backgroundColor: colors.surface, marginHorizontal: spacing.lg, marginTop: spacing.md, marginBottom: spacing.sm, padding: 14, borderRadius: borderRadius.card, borderWidth: 1.5, borderColor: colors.primary, borderStyle: 'dashed', minHeight: 48 },
 });

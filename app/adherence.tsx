@@ -1,22 +1,22 @@
 import { useState, useCallback } from 'react';
-import { View, Text, TouchableOpacity, StyleSheet, ScrollView, ActivityIndicator } from 'react-native';
+import { View, Text, TouchableOpacity, StyleSheet, ScrollView, ActivityIndicator, Alert } from 'react-native';
 import { useRouter, useFocusEffect } from 'expo-router';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { colors } from '../src/theme/colors';
 import { typography } from '../src/theme/typography';
 import { spacing, borderRadius, shadow } from '../src/theme/spacing';
 import { api } from '../src/services/api';
 import { useAuthStore } from '../src/stores/useAuthStore';
 import { Button } from '../src/components/Button';
+import { useThemedStyles } from '../src/theme/ThemeProvider';
+import { localDate } from '../src/services/date';
 
 const MONTHS = ['Ocak', 'Şubat', 'Mart', 'Nisan', 'Mayıs', 'Haziran', 'Temmuz', 'Ağustos', 'Eylül', 'Ekim', 'Kasım', 'Aralık'];
 const DAYS = Array.from({ length: 31 }, (_, i) => i + 1);
 
 export default function AdherenceScreen() {
+  const styles = useThemedStyles(baseStyles);
   const router = useRouter();
-  const insets = useSafeAreaInsets();
   const userId = useAuthStore((s) => s.userId);
-  const role = useAuthStore((s) => s.role);
   const [month, setMonth] = useState(new Date().getMonth());
   const [logs, setLogs] = useState<any[]>([]);
   const [medications, setMedications] = useState<any[]>([]);
@@ -32,14 +32,15 @@ export default function AdherenceScreen() {
     ]).then(([meds, logData]) => {
       setMedications(meds);
       setLogs(logData);
-    }).catch(() => {}).finally(() => setLoading(false));
+    }).catch((error: any) => Alert.alert('Uyum geçmişi yüklenemedi', error?.message || 'Lütfen tekrar deneyin.'))
+      .finally(() => setLoading(false));
   }, [userId]));
 
   const getDayColor = (day: number) => {
     const dayStr = `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
     const dayLogs = logs.filter(l => l.date === dayStr);
-    const total = medications.reduce((s, m) => s + (m.times?.length || 0), 0);
-    const taken = dayLogs.filter(l => l.status === 'taken').length;
+    const total = scheduledDoseCount(dayStr);
+    const taken = dayLogs.filter(l => ['taken', 'caregiver_marked'].includes(l.status)).length;
     if (total === 0) return null;
     if (taken >= total) return colors.secondary;
     if (taken > 0) return colors.warning;
@@ -52,14 +53,33 @@ export default function AdherenceScreen() {
     return logs.filter(l => l.date === dayStr);
   };
 
-  const totalDoses = medications.reduce((s, m) => s + (m.times?.length || 0), 0);
   const totalDays = new Date(year, month + 1, 0).getDate();
   const takenThisMonth = logs.filter(l => {
     const [y, m] = l.date.split('-');
-    return parseInt(m) === month + 1 && parseInt(y) === year && l.status === 'taken';
+    return parseInt(m) === month + 1 && parseInt(y) === year && ['taken', 'caregiver_marked'].includes(l.status);
   }).length;
-  const expectedThisMonth = totalDoses * totalDays;
+  function scheduledDoseCount(dayKey: string) {
+    return medications.reduce((sum, medication) => {
+      const createdDate = String(medication.createdAt || '').slice(0, 10);
+      const normalizedEnd = /^\d{2}\.\d{2}\.\d{4}$/.test(medication.endDate || '')
+        ? medication.endDate.split('.').reverse().join('-')
+        : medication.endDate;
+      if (createdDate && dayKey < createdDate) return sum;
+      if (normalizedEnd && dayKey > normalizedEnd) return sum;
+      if (medication.isActive === false) return sum;
+      return sum + (medication.times?.length || 0);
+    }, 0);
+  }
+  const todayKey = localDate();
+  const expectedThisMonth = Array.from({ length: totalDays }, (_, index) => {
+    const dayKey = `${year}-${String(month + 1).padStart(2, '0')}-${String(index + 1).padStart(2, '0')}`;
+    return dayKey <= todayKey ? scheduledDoseCount(dayKey) : 0;
+  }).reduce((sum, count) => sum + count, 0);
   const adherence = expectedThisMonth > 0 ? Math.min(100, Math.round((takenThisMonth / expectedThisMonth) * 100)) : 0;
+
+  if (loading) return <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: colors.background }}>
+    <ActivityIndicator size="large" color={colors.primary} />
+  </View>;
 
   return (
     <View style={{ flex: 1, backgroundColor: colors.background }}>
@@ -79,7 +99,7 @@ export default function AdherenceScreen() {
             {['Pzt','Sal','Çar','Per','Cum','Cmt','Paz'].map(d => <View key={d} style={{ flex: 1, alignItems: 'center' }}><Text style={{ ...typography.small, color: colors.textLight }}>{d}</Text></View>)}
           </View>
           <View style={{ flexDirection: 'row', flexWrap: 'wrap' }}>
-            {Array.from({ length: new Date(year, month, 1).getDay() || 7 }).map((_, i) => <View key={`e-${i}`} style={{ width: '14.28%', aspectRatio: 1 }} />)}
+            {Array.from({ length: (new Date(year, month, 1).getDay() + 6) % 7 }).map((_, i) => <View key={`e-${i}`} style={{ width: '14.28%', aspectRatio: 1 }} />)}
             {DAYS.slice(0, totalDays).map(day => {
               const color = getDayColor(day);
               return (
@@ -116,10 +136,10 @@ export default function AdherenceScreen() {
               <Text style={{ ...typography.body, color: colors.textLight }}>Bu günde kayıt yok</Text>
             ) : getSelectedLogs().map((l, i) => (
               <View key={i} style={{ flexDirection: 'row', alignItems: 'center', backgroundColor: colors.surface, borderRadius: 12, padding: 12, marginBottom: spacing.xs }}>
-                <View style={[styles.logDot, { backgroundColor: l.status === 'taken' ? colors.secondary : colors.danger }]} />
+                <View style={[styles.logDot, { backgroundColor: ['taken', 'caregiver_marked'].includes(l.status) ? colors.secondary : colors.danger }]} />
                 <View style={{ flex: 1 }}>
                   <Text style={{ ...typography.body, color: colors.text, fontWeight: '500' }}>{l.scheduledTime}</Text>
-                  <Text style={{ ...typography.caption, color: colors.textSecondary }}>{l.status === 'taken' ? '✅ Alındı' : '❌ Alınmadı'}</Text>
+                  <Text style={{ ...typography.caption, color: colors.textSecondary }}>{['taken', 'caregiver_marked'].includes(l.status) ? '✅ Alındı' : '❌ Alınmadı'}</Text>
                 </View>
               </View>
             ))}
@@ -134,7 +154,7 @@ export default function AdherenceScreen() {
   );
 }
 
-const styles = StyleSheet.create({
+const baseStyles = StyleSheet.create({
   calendarCard: { backgroundColor: colors.surface, borderRadius: borderRadius.card, padding: 20, marginHorizontal: spacing.lg, marginTop: spacing.md },
   day: { width: '14.28%', aspectRatio: 1, alignItems: 'center', justifyContent: 'center', borderRadius: 12, minHeight: 44 },
   dot: { width: 6, height: 6, borderRadius: 3, marginTop: 2 },

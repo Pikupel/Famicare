@@ -1,7 +1,6 @@
 import { TouchableOpacity, Text, Alert } from 'react-native';
 import { useAuthStore } from '../stores/useAuthStore';
 import { api } from '../services/api';
-import { colors } from '../theme/colors';
 
 export function SOSButton() {
   const userId = useAuthStore((s) => s.userId);

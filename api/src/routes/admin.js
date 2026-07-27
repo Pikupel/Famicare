@@ -6,6 +6,7 @@ import { timingSafeEqual } from 'crypto';
 import { verify as verifyTotp } from 'otplib';
 import { createTitckPreview, consumeTitckPreview } from '../services/titck-import.js';
 import { removeUserFromState } from '../services/user-deletion.js';
+import { revokeUserSessions } from '../services/sessions.js';
 
 const router = Router();
 const ADMIN_USERNAME = process.env.ADMIN_USERNAME;
@@ -32,6 +33,11 @@ function normalizeUsername(value) {
 }
 
 router.post('/session', async (req, res) => {
+  if (adminLoginAttempts.size > 10_000) {
+    for (const [key, value] of adminLoginAttempts) {
+      if (!value.blockedUntil || value.blockedUntil <= Date.now()) adminLoginAttempts.delete(key);
+    }
+  }
   const identifier = req.ip || req.socket.remoteAddress || 'unknown';
   const attempt = adminLoginAttempts.get(identifier);
   if (attempt?.blockedUntil > Date.now()) {
@@ -212,6 +218,7 @@ router.patch('/users/:id/pin', async (req, res) => {
   user.pinHash = await bcrypt.hash(pin, 12);
   user.failedLoginAttempts = 0;
   user.loginBlockedUntil = null;
+  revokeUserSessions(user.id);
   await db.write();
   await recordAudit(req, 'user.pin-reset', 'user', user.id);
   res.json({ success: true });
@@ -263,7 +270,7 @@ router.post('/test-push', async (req, res) => {
 router.post('/clear-all', async (req, res) => {
   if (!requireConfirmation(req, res, 'TÜM VERİYİ SİL')) return;
   if (!requirePersistentDatabase(req, res)) return;
-  const { adminBackups = [], adminAuditLogs = [], ...backupData } = db.data;
+  const { adminBackups = [], adminAuditLogs = [], authSessions: ignoredSessions, pushDeliveries: ignoredPushDeliveries, ...backupData } = db.data;
   const backup = { id: uuid(), createdAt: new Date().toISOString(), data: structuredClone(backupData) };
   db.data.adminBackups = [backup, ...adminBackups].slice(0, 3);
   db.data.users = [];
@@ -276,6 +283,9 @@ router.post('/clear-all', async (req, res) => {
   db.data.emergencies = [];
   db.data.emergencyContacts = [];
   db.data.inviteAttempts = {};
+  db.data.authSessions = [];
+  db.data.pushDeliveries = [];
+  db.data.phoneVerifications = [];
   await db.write();
   await deleteRelationalData({ clearAll: true });
   await recordAudit(req, 'database.clear-all', 'database', 'primary', { backupId: backup.id });
@@ -292,7 +302,7 @@ router.post('/backups/:id/restore', async (req, res) => {
   if (!backup) return res.status(404).json({ error: 'Yedek bulunamadı' });
   const backups = db.data.adminBackups;
   const auditLogs = db.data.adminAuditLogs;
-  db.data = { ...db.data, ...structuredClone(backup.data), adminBackups: backups, adminAuditLogs: auditLogs };
+  db.data = { ...db.data, ...structuredClone(backup.data), authSessions: [], pushDeliveries: [], adminBackups: backups, adminAuditLogs: auditLogs };
   await db.write();
   await recordAudit(req, 'database.restore', 'backup', backup.id);
   res.json({ success: true });

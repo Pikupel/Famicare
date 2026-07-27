@@ -2,6 +2,7 @@ import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
 import { typography } from '../theme/typography';
 import { colors } from '../theme/colors';
 import { spacing, borderRadius } from '../theme/spacing';
+import { useThemedStyles } from '../theme/ThemeProvider';
 
 interface EmptyStateProps {
   icon: string;
@@ -12,6 +13,7 @@ interface EmptyStateProps {
 }
 
 export function EmptyState({ icon, title, description, actionLabel, onAction }: EmptyStateProps) {
+  const styles = useThemedStyles(baseStyles);
   return (
     <View style={styles.container}>
       <Text style={styles.icon}>{icon}</Text>
@@ -26,7 +28,7 @@ export function EmptyState({ icon, title, description, actionLabel, onAction }: 
   );
 }
 
-const styles = StyleSheet.create({
+const baseStyles = StyleSheet.create({
   container: { alignItems: 'center', paddingVertical: spacing.xxl, paddingHorizontal: spacing.lg },
   icon: { fontSize: 48, marginBottom: spacing.md, opacity: 0.5 },
   title: { ...typography.h3, color: colors.textSecondary, textAlign: 'center', marginBottom: spacing.xs },

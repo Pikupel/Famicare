@@ -28,6 +28,10 @@ test('unrelated users cannot access health records', () => {
   assert.equal(canManageRecord({ id: 'attacker' }, 'healthRecords', 'health-1').record, null);
 });
 
-test('users can access records stored under their own id', () => {
-  assert.equal(getAccessibleProfile({ id: 'patient-1' }, 'patient-1')?.self, true);
+test('linked users are resolved to their shared profile when using their own id', () => {
+  assert.equal(getAccessibleProfile({ id: 'patient-1' }, 'patient-1')?.id, 'profile-1');
+});
+
+test('unlinked users can access records stored under their own id', () => {
+  assert.equal(getAccessibleProfile({ id: 'unlinked-patient' }, 'unlinked-patient')?.self, true);
 });

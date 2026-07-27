@@ -6,6 +6,7 @@ import { colors } from '../src/theme/colors';
 import { typography } from '../src/theme/typography';
 import { spacing } from '../src/theme/spacing';
 import { Button } from '../src/components/Button';
+import { useThemedStyles } from '../src/theme/ThemeProvider';
 
 const { width } = Dimensions.get('window');
 const STEPS = [
@@ -15,6 +16,7 @@ const STEPS = [
 ];
 
 export default function OnboardingScreen() {
+  const styles = useThemedStyles(baseStyles);
   const router = useRouter();
   const [page, setPage] = useState(0);
   const [ready, setReady] = useState(false);
@@ -71,7 +73,7 @@ export default function OnboardingScreen() {
   );
 }
 
-const styles = StyleSheet.create({
+const baseStyles = StyleSheet.create({
   container: { flex: 1, backgroundColor: colors.background },
   skip: { position: 'absolute', top: 56, right: spacing.lg, zIndex: 10 },
   page: { width, alignItems: 'center', justifyContent: 'center', paddingHorizontal: spacing.xl },

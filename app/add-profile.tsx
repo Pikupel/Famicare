@@ -7,8 +7,10 @@ import { typography } from '../src/theme/typography';
 import { spacing, borderRadius } from '../src/theme/spacing';
 import { Button } from '../src/components/Button';
 import { api } from '../src/services/api';
+import { useThemedStyles } from '../src/theme/ThemeProvider';
 
 export default function AddProfileScreen() {
+  const styles = useThemedStyles(baseStyles);
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const [name, setName] = useState('');
@@ -54,7 +56,7 @@ export default function AddProfileScreen() {
     </ScrollView>
   );
 }
-const styles = StyleSheet.create({
+const baseStyles = StyleSheet.create({
   label: { ...typography.caption, color: colors.textSecondary, marginBottom: spacing.xs, marginTop: spacing.md },
   input: { backgroundColor: colors.surface, borderRadius: borderRadius.input, paddingHorizontal: 16, paddingVertical: 14, fontSize: 16, color: colors.text, borderWidth: 1, borderColor: colors.border, marginBottom: spacing.sm, minHeight: 48 },
   option: { flex: 1, paddingVertical: 12, borderRadius: borderRadius.input, alignItems: 'center', backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border },

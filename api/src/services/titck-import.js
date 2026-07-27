@@ -50,6 +50,11 @@ function parseProducts(sheet, status) {
 }
 
 export async function createTitckPreview(sourceUrl, currentProducts = []) {
+  const now = Date.now();
+  for (const [key, preview] of previews) {
+    if (now - preview.createdAt > PREVIEW_TTL_MS) previews.delete(key);
+  }
+  if (previews.size >= 3) throw new Error('Çok fazla bekleyen önizleme var; mevcut önizlemeyi uygulayın veya süresinin dolmasını bekleyin');
   const url = validateSourceUrl(sourceUrl);
   const response = await fetch(url, { redirect: 'error', signal: AbortSignal.timeout(60_000) });
   if (!response.ok) throw new Error(`TİTCK dosyası indirilemedi (${response.status})`);

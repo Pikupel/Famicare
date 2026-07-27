@@ -4,15 +4,23 @@ import { join, dirname } from 'path';
 import { fileURLToPath } from 'url';
 import { v4 as uuidv4 } from 'uuid';
 import pg from 'pg';
+import { mkdirSync } from 'fs';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
-const file = join(__dirname, '..', 'db.json');
+const file = process.env.LOCAL_DB_PATH
+  ? join(process.cwd(), process.env.LOCAL_DB_PATH)
+  : join(__dirname, '..', 'data', 'db.local.json');
+mkdirSync(dirname(file), { recursive: true });
 
 const defaultData = {
   users: [], profiles: [], medications: [], medicationLogs: [],
   appointments: [], healthRecords: [], emergencies: [],
   emergencyContacts: [], notifications: [], drugReferences: [],
   lastImportDate: '', inviteAttempts: {}, adminAuditLogs: [], adminBackups: [],
+  pushDeliveries: [],
+  authSessions: [],
+  phoneVerifications: [],
+  phoneVerifications: [],
 };
 
 const adapter = new JSONFile(file);
@@ -36,8 +44,67 @@ export async function initDb() {
       console.log('⚠️ PostgreSQL bağlanamadı:', e.message);
       if (pgPool) await pgPool.end().catch(() => {});
       pgPool = null;
+      if (process.env.NODE_ENV === 'production') {
+        throw new Error('Kalıcı PostgreSQL veritabanına bağlanılamadı; veri kaybını önlemek için API başlatılmadı');
+      }
     }
   }
+  await migrateLinkedProfileRecords();
+}
+
+async function migrateLinkedProfileRecords() {
+  let changed = false;
+  for (const profile of db.data.profiles.filter(item => item.linkedUserId && item.id !== item.linkedUserId)) {
+    const oldId = profile.linkedUserId;
+    for (const key of ['medications', 'medicationLogs', 'appointments', 'healthRecords', 'emergencies']) {
+      for (const record of db.data[key] || []) {
+        if (record.profileId === oldId) {
+          record.profileId = profile.id;
+          changed = true;
+        }
+      }
+    }
+  }
+  for (const record of db.data.healthRecords || []) {
+    if (!['caregiver', 'elderly'].includes(record.recordedBy)) continue;
+    const profile = db.data.profiles.find(item => item.id === record.profileId);
+    const resolvedUserId = record.recordedBy === 'caregiver'
+      ? profile?.caregiverId
+      : profile?.linkedUserId || record.profileId;
+    if (resolvedUserId) {
+      record.recordedBy = resolvedUserId;
+      changed = true;
+    }
+  }
+  for (const medication of db.data.medications || []) {
+    if (medication.packageCapacity == null && medication.stockTotal != null) {
+      medication.packageCapacity = Number(medication.stockTotal);
+      changed = true;
+    }
+    if (!Number.isFinite(Number(medication.unitsPerDose)) || Number(medication.unitsPerDose) <= 0) {
+      medication.unitsPerDose = 1;
+      changed = true;
+    }
+  }
+  if (changed) {
+    await db.write();
+    console.log('[MIGRATION] Linked-user records consolidated under profile ids');
+  }
+}
+
+export async function consolidateUserRecordsIntoProfile(userId, profileId) {
+  if (!userId || !profileId || userId === profileId) return false;
+  let changed = false;
+  for (const key of ['medications', 'medicationLogs', 'appointments', 'healthRecords', 'emergencies']) {
+    for (const record of db.data[key] || []) {
+      if (record.profileId === userId) {
+        record.profileId = profileId;
+        changed = true;
+      }
+    }
+  }
+  if (changed) await db.write();
+  return changed;
 }
 
 async function migratePg() {
@@ -62,9 +129,9 @@ async function migratePg() {
   }
 
   // Sync FROM PostgreSQL TO JSON (PostgreSQL is source of truth when available)
-  await syncFromPg('users', 'id', 'phone', 'name', 'role', 'fcm_token');
-  await syncFromPg('profiles', 'id', 'caregiver_id', 'name', 'birth_date', 'relationship', 'phone', 'invite_code', 'linked_user_id');
-  await syncFromPg('medications', 'id', 'profile_id', 'name', 'dosage', 'instructions', 'times', 'end_date', 'purpose', 'stock_total');
+  await syncFromPg('users', 'id', 'phone', 'name', 'role', 'fcm_token', 'pin_hash', 'timezone', 'created_at');
+  await syncFromPg('profiles', 'id', 'caregiver_id', 'name', 'birth_date', 'relationship', 'phone', 'invite_code', 'linked_user_id', 'is_active', 'created_at');
+  await syncFromPg('medications', 'id', 'profile_id', 'name', 'dosage', 'instructions', 'times', 'end_date', 'purpose', 'stock_total', 'is_active', 'created_at');
   await syncFromPg('medication_logs', 'id', 'medication_id', 'profile_id', 'scheduled_time', 'date', 'status', 'taken_at', 'confirmed_by', 'changed_by');
   await syncFromPg('appointments', 'id', 'profile_id', 'title', 'location', 'doctor_name', 'date', 'time', 'notes', 'status');
   await syncFromPg('health_records', 'id', 'profile_id', 'record_type', 'value_data', 'measured_at', 'recorded_by');
@@ -100,12 +167,11 @@ const SNAKE_TO_CAMEL = {
   confirmed_by: 'confirmedBy', changed_by: 'changedBy', doctor_name: 'doctorName',
   record_type: 'recordType', value_data: 'valueData', measured_at: 'measuredAt',
   recorded_by: 'recordedBy', is_read: 'isRead', fcm_token: 'fcmToken',
+  pin_hash: 'pinHash', timezone: 'timezone',
   created_at: 'createdAt', birth_date: 'birthDate', invite_code: 'inviteCode',
   is_active: 'isActive', end_date: 'endDate', stock_total: 'stockTotal',
   stock_refill_date: 'stockRefillDate', user_id: 'userId',
 };
-
-const SYNC_TABLES = ['users', 'profiles', 'medications', 'medication_logs', 'appointments', 'health_records', 'notifications'];
 
 async function syncFromPg(table, ...columns) {
   try {
@@ -114,7 +180,11 @@ async function syncFromPg(table, ...columns) {
       const obj = {};
       for (const col of columns) {
         const jsKey = SNAKE_TO_CAMEL[col] || col;
-        obj[jsKey] = row[col] !== null && row[col] !== undefined ? row[col] : '';
+        let value = row[col] !== null && row[col] !== undefined ? row[col] : '';
+        if (col === 'times' && typeof value === 'string') {
+          try { value = JSON.parse(value); } catch { value = value.split(',').map(item => item.trim()).filter(Boolean); }
+        }
+        obj[jsKey] = value;
       }
       return obj;
     });
@@ -126,35 +196,6 @@ async function syncFromPg(table, ...columns) {
   }
 }
 
-// Sync wrapper: writes to JSON + PostgreSQL
-async function writeToDb(collection, id, data) {
-  // JSON write
-  const idx = db.data[collection].findIndex(item => item.id === id);
-  if (idx >= 0) db.data[collection][idx] = data;
-  else db.data[collection].push(data);
-  await db.write();
-
-  // PostgreSQL write
-  if (!pgPool) return;
-  try {
-    const tableName = collection;
-    const keys = Object.keys(data);
-    const values = Object.values(data);
-    const placeholders = keys.map((_, i) => `$${i + 1}`).join(', ');
-    const columns = keys.join(', ');
-    await pgPool.query(
-      `INSERT INTO ${tableName} (${columns}) VALUES (${placeholders}) ON CONFLICT (id) DO UPDATE SET ${keys.map((k, i) => `${k} = $${i + 1}`).join(', ')}`,
-      values
-    );
-  } catch {}
-}
-
-async function deleteFromDb(collection, id) {
-  db.data[collection] = db.data[collection].filter(item => item.id !== id);
-  await db.write();
-  if (!pgPool) return;
-  try { await pgPool.query(`DELETE FROM ${collection} WHERE id = $1`, [id]); } catch {}
-}
 
 async function deleteRelationalData({ userIds = [], profileIds = [], clearAll = false } = {}) {
   if (!pgPool) return;
@@ -190,4 +231,4 @@ async function deleteRelationalData({ userIds = [], profileIds = [], clearAll = 
   }
 }
 
-export { db, uuidv4 as uuid, writeToDb, deleteFromDb, deleteRelationalData, pgPool };
+export { db, uuidv4 as uuid, deleteRelationalData, pgPool };

@@ -1,7 +1,8 @@
-import { createContext, useContext, useState, useEffect, ReactNode } from 'react';
+import { createContext, useContext, useState, useEffect, useMemo, ReactNode } from 'react';
 import { useColorScheme } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { colors as lightColors } from './colors';
+const originalLightColors = { ...lightColors };
 
 const darkColors = {
   primary: '#6BD8CB',
@@ -47,18 +48,20 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     AsyncStorage.getItem('famicare_theme').then(saved => {
-      if (saved === 'dark' || saved === 'light') setTheme(saved);
-      else if (systemScheme === 'dark') setTheme('dark');
+      const selected = saved === 'dark' || saved === 'light' ? saved : systemScheme === 'dark' ? 'dark' : 'light';
+      Object.assign(lightColors, selected === 'dark' ? darkColors : originalLightColors);
+      setTheme(selected);
     });
-  }, []);
+  }, [systemScheme]);
 
   const toggleTheme = () => {
     const next = theme === 'light' ? 'dark' : 'light';
+    Object.assign(lightColors, next === 'dark' ? darkColors : originalLightColors);
     setTheme(next);
     AsyncStorage.setItem('famicare_theme', next);
   };
 
-  const colors = theme === 'dark' ? darkColors : lightColors;
+  const colors = theme === 'dark' ? darkColors : originalLightColors;
   const isDark = theme === 'dark';
 
   return (
@@ -69,3 +72,29 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
 }
 
 export const useTheme = () => useContext(ThemeContext);
+
+export function useThemedStyles<T extends Record<string, any>>(baseStyles: T): T {
+  const { colors, theme } = useTheme();
+  return useMemo(() => {
+    const colorMap = new Map(
+      Object.keys(originalLightColors).map(key => [
+        originalLightColors[key as keyof typeof originalLightColors],
+        colors[key as keyof typeof colors],
+      ])
+    );
+    const transform = (value: any): any => {
+      if (Array.isArray(value)) return value.map(transform);
+      if (value && typeof value === 'object') {
+        return Object.fromEntries(Object.entries(value).map(([key, child]) => [key, transform(child)]));
+      }
+      if (typeof value === 'string') {
+        for (const [light, themed] of colorMap) {
+          if (value === light) return themed;
+          if (value.startsWith(light) && value.length > light.length) return `${themed}${value.slice(light.length)}`;
+        }
+      }
+      return value;
+    };
+    return transform(baseStyles);
+  }, [baseStyles, colors, theme]);
+}

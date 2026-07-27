@@ -44,3 +44,74 @@ test('web account deletion requires the correct PIN and deletes associated data'
     db.write = originalWrite;
   }
 });
+
+test('explicit test mode allows registration without SMS verification', async () => {
+  const originalData = db.data;
+  const originalWrite = db.write;
+  const originalSetting = process.env.ALLOW_UNVERIFIED_REGISTRATION;
+  db.data = {
+    ...structuredClone(originalData),
+    users: [], profiles: [], phoneVerifications: [], authSessions: [],
+  };
+  db.write = async () => {};
+  process.env.ALLOW_UNVERIFIED_REGISTRATION = 'true';
+
+  try {
+    const verification = await request(app).post('/api/v1/auth/request-verification').send({
+      phone: '0555 444 33 22',
+    });
+    assert.equal(verification.status, 200);
+    assert.equal(verification.body.verificationRequired, false);
+
+    const registered = await request(app).post('/api/v1/auth/register').send({
+      phone: '0555 444 33 22',
+      name: 'APK Test Kullanıcısı',
+      role: 'elderly',
+      pin: '2468',
+    });
+    assert.equal(registered.status, 201);
+    assert.equal(db.data.users.length, 1);
+  } finally {
+    if (originalSetting === undefined) delete process.env.ALLOW_UNVERIFIED_REGISTRATION;
+    else process.env.ALLOW_UNVERIFIED_REGISTRATION = originalSetting;
+    db.data = originalData;
+    db.write = originalWrite;
+  }
+});
+
+test('registration requires a valid phone verification code', async () => {
+  const originalData = db.data;
+  const originalWrite = db.write;
+  db.data = {
+    ...structuredClone(originalData),
+    users: [], profiles: [], phoneVerifications: [], authSessions: [],
+  };
+  db.write = async () => {};
+  try {
+    const rejected = await request(app).post('/api/v1/auth/register').send({
+      phone: '0555 333 22 11', name: 'Yeni Kullanıcı', role: 'elderly', pin: '2468',
+    });
+    assert.equal(rejected.status, 401);
+
+    const verification = await request(app).post('/api/v1/auth/request-verification').send({
+      phone: '0555 333 22 11',
+    });
+    assert.equal(verification.status, 200);
+    assert.equal(typeof verification.body.devCode, 'string');
+
+    const registered = await request(app).post('/api/v1/auth/register').send({
+      phone: '0555 333 22 11',
+      name: 'Yeni Kullanıcı',
+      role: 'elderly',
+      pin: '2468',
+      verificationId: verification.body.verificationId,
+      verificationCode: verification.body.devCode,
+    });
+    assert.equal(registered.status, 201);
+    assert.equal(db.data.users.length, 1);
+    assert.equal(typeof registered.body.refreshToken, 'string');
+  } finally {
+    db.data = originalData;
+    db.write = originalWrite;
+  }
+});

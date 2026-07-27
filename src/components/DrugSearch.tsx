@@ -4,6 +4,7 @@ import { api } from '../services/api';
 import { colors } from '../theme/colors';
 import { typography } from '../theme/typography';
 import { spacing, borderRadius } from '../theme/spacing';
+import { useThemedStyles } from '../theme/ThemeProvider';
 
 interface DrugResult {
   id: string;
@@ -23,10 +24,10 @@ interface DrugSearchProps {
 }
 
 export function DrugSearch({ onSelect, placeholder }: DrugSearchProps) {
+  const styles = useThemedStyles(baseStyles);
   const [query, setQuery] = useState('');
   const [results, setResults] = useState<DrugResult[]>([]);
   const [loading, setLoading] = useState(false);
-  const [selected, setSelected] = useState<DrugResult | null>(null);
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const search = async (q: string) => {
@@ -44,7 +45,6 @@ export function DrugSearch({ onSelect, placeholder }: DrugSearchProps) {
   };
 
   const handleSelect = (drug: DrugResult) => {
-    setSelected(drug);
     setQuery(drug.ilac_adi);
     setResults([]);
     onSelect(drug);
@@ -81,7 +81,7 @@ export function DrugSearch({ onSelect, placeholder }: DrugSearchProps) {
   );
 }
 
-const styles = StyleSheet.create({
+const baseStyles = StyleSheet.create({
   input: { backgroundColor: colors.surface, borderRadius: borderRadius.input, paddingHorizontal: 16, paddingVertical: 14, fontSize: 16, color: colors.text, borderWidth: 1, borderColor: colors.border, marginBottom: spacing.sm, minHeight: 48 },
   list: { maxHeight: 200, backgroundColor: colors.surface, borderRadius: borderRadius.input, borderWidth: 1, borderColor: colors.border, marginBottom: spacing.sm },
   item: { padding: 12, borderBottomWidth: 1, borderBottomColor: colors.border },

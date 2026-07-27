@@ -1,19 +1,25 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { View, Text, TouchableOpacity, StyleSheet, Alert } from 'react-native';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { colors } from '../src/theme/colors';
 import { typography } from '../src/theme/typography';
-import { spacing, borderRadius } from '../src/theme/spacing';
+import { spacing } from '../src/theme/spacing';
 import { api } from '../src/services/api';
 import { cancelDoseFollowups, schedulePostponedReminder } from '../src/services/notifications';
+import { useThemedStyles } from '../src/theme/ThemeProvider';
 
 export default function ConfirmMedicationScreen() {
+  const styles = useThemedStyles(baseStyles);
   const router = useRouter();
   const { id, name, dosage, purpose, time } = useLocalSearchParams();
   const [undoTimer, setUndoTimer] = useState<ReturnType<typeof setTimeout> | null>(null);
   const [confirmed, setConfirmed] = useState<'taken' | 'postponed' | null>(null);
+  useEffect(() => () => {
+    if (undoTimer) clearTimeout(undoTimer);
+  }, [undoTimer]);
 
   const handleAction = async (action: 'taken' | 'postponed') => {
+    if (confirmed || !id || !time) return;
     setConfirmed(action);
     const timer = setTimeout(async () => {
       try {
@@ -70,7 +76,7 @@ export default function ConfirmMedicationScreen() {
   );
 }
 
-const styles = StyleSheet.create({
+const baseStyles = StyleSheet.create({
   takenBtn: { height: 64, borderRadius: 16, backgroundColor: colors.secondary, alignItems: 'center', justifyContent: 'center', marginBottom: spacing.md, shadowColor: colors.secondary, shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.3, shadowRadius: 8, elevation: 5 },
   postponeBtn: { height: 56, borderRadius: 16, backgroundColor: colors.surface, borderWidth: 2, borderColor: colors.border, alignItems: 'center', justifyContent: 'center' },
   undoBtn: { height: 56, borderRadius: 16, backgroundColor: colors.warning, alignItems: 'center', justifyContent: 'center' },

@@ -1,19 +1,19 @@
 import { useState } from 'react';
 import { View, Text, TextInput, TouchableOpacity, StyleSheet, ScrollView, Alert, KeyboardAvoidingView, Platform } from 'react-native';
 import { useRouter, useLocalSearchParams } from 'expo-router';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { colors } from '../src/theme/colors';
 import { typography } from '../src/theme/typography';
 import { spacing, borderRadius } from '../src/theme/spacing';
 import { Button } from '../src/components/Button';
 import { api } from '../src/services/api';
 import { useAuthStore } from '../src/stores/useAuthStore';
+import { useThemedStyles } from '../src/theme/ThemeProvider';
 
 type MeasureType = 'blood_pressure' | 'blood_sugar' | 'weight';
 
 export default function AddHealthScreen() {
+  const styles = useThemedStyles(baseStyles);
   const router = useRouter();
-  const insets = useSafeAreaInsets();
   const userId = useAuthStore((s) => s.userId);
   const { id, profileId, editType, editSystolic, editDiastolic, editSugar, editWeight } = useLocalSearchParams();
   const isEdit = !!id;
@@ -90,7 +90,7 @@ export default function AddHealthScreen() {
     </KeyboardAvoidingView>
   );
 }
-const styles = StyleSheet.create({
+const baseStyles = StyleSheet.create({
   typeBtn: { flex: 1, alignItems: 'center', paddingVertical: 16, borderRadius: borderRadius.card, backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border, minHeight: 56 },
   typeActive: { backgroundColor: colors.primary, borderColor: colors.primary },
   label: { ...typography.caption, color: colors.textSecondary, marginBottom: spacing.xs, marginTop: spacing.md },

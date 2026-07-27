@@ -1,4 +1,5 @@
 import jwt from 'jsonwebtoken';
+import { db } from '../db.js';
 
 const JWT_SECRET = process.env.JWT_SECRET;
 
@@ -7,11 +8,11 @@ if (!JWT_SECRET && process.env.NODE_ENV === 'production') {
 }
 const effectiveSecret = JWT_SECRET || 'famicare-local-development-only';
 
-export function generateToken(user) {
+export function generateToken(user, sessionId = null) {
   return jwt.sign(
-    { id: user.id, role: user.role, phone: user.phone },
+    { id: user.id, role: user.role, phone: user.phone, sid: sessionId },
     effectiveSecret,
-    { expiresIn: '30d' }
+    { expiresIn: '30m' }
   );
 }
 
@@ -22,7 +23,16 @@ export function authMiddleware(req, res, next) {
   }
   try {
     const token = header.split(' ')[1];
-    req.user = jwt.verify(token, effectiveSecret);
+    const payload = jwt.verify(token, effectiveSecret);
+    const user = db.data.users.find(item => item.id === payload.id);
+    if (!user) return res.status(401).json({ error: 'Hesap artık aktif değil' });
+    if (process.env.NODE_ENV === 'production' && !payload.sid) {
+      return res.status(401).json({ error: 'Güvenli oturum için yeniden giriş yapın' });
+    }
+    if (payload.sid && !db.data.authSessions?.some(session => session.id === payload.sid && session.userId === user.id && !session.revokedAt)) {
+      return res.status(401).json({ error: 'Oturum sonlandırılmış' });
+    }
+    req.user = { ...payload, role: user.role, phone: user.phone };
     next();
   } catch {
     res.status(401).json({ error: 'Geçersiz token' });

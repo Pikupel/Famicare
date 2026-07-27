@@ -1,31 +1,36 @@
 import { useState, useCallback } from 'react';
 import { View, Text, TouchableOpacity, StyleSheet, ScrollView, ActivityIndicator, Alert } from 'react-native';
 import { useRouter, useFocusEffect } from 'expo-router';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { colors } from '../src/theme/colors';
 import { typography } from '../src/theme/typography';
 import { spacing, borderRadius, shadow } from '../src/theme/spacing';
 import { api } from '../src/services/api';
+import { useThemedStyles } from '../src/theme/ThemeProvider';
 
 export default function ReviewScreen() {
+  const styles = useThemedStyles(baseStyles);
   const router = useRouter();
-  const insets = useSafeAreaInsets();
   const [profiles, setProfiles] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
 
   useFocusEffect(useCallback(() => {
     api.get<any[]>('/dashboard').then(async (data) => {
-      const results = [];
-      for (const p of data) {
+      const requests = data.map(async p => {
         const pid = p.profile?.id;
-        if (!pid) continue;
-        try {
-          const pending = await api.get<any[]>(`/medications/profile/${pid}/pending`);
-          if (pending.length > 0) results.push({ ...p, pending });
-        } catch {}
-      }
+        if (!pid) return null;
+        const pending = await api.get<any[]>(`/medications/profile/${pid}/pending`);
+        return pending.length > 0 ? { ...p, pending } : null;
+      });
+      const settled = await Promise.allSettled(requests);
+      const results = settled
+        .filter((result): result is PromiseFulfilledResult<any> => result.status === 'fulfilled' && result.value)
+        .map(result => result.value);
       setProfiles(results);
-    }).catch(() => {}).finally(() => setLoading(false));
+      if (settled.some(result => result.status === 'rejected')) {
+        Alert.alert('Bazı kayıtlar yüklenemedi', 'Listeyi yenileyerek tekrar deneyebilirsiniz.');
+      }
+    }).catch((error: any) => Alert.alert('İnceleme listesi yüklenemedi', error?.message || 'Lütfen tekrar deneyin.'))
+      .finally(() => setLoading(false));
   }, []));
 
   const markTaken = async (log: any, medName: string) => {
@@ -76,7 +81,7 @@ export default function ReviewScreen() {
   );
 }
 
-const styles = StyleSheet.create({
+const baseStyles = StyleSheet.create({
   card: { flexDirection: 'row', alignItems: 'center', backgroundColor: colors.surface, borderRadius: borderRadius.card, padding: 14, marginBottom: spacing.sm, borderLeftWidth: 4, borderLeftColor: colors.warning },
   actionBtn: { marginLeft: spacing.sm, backgroundColor: colors.primary, paddingHorizontal: 14, paddingVertical: 10, borderRadius: 10 },
 });

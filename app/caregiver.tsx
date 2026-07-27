@@ -1,14 +1,13 @@
 import { useState, useCallback } from 'react';
-import { View, Text, TouchableOpacity, StyleSheet, ScrollView, ActivityIndicator } from 'react-native';
+import { View, Text, TouchableOpacity, StyleSheet, ScrollView, ActivityIndicator, Alert } from 'react-native';
 import { useRouter, useFocusEffect } from 'expo-router';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { colors } from '../src/theme/colors';
 import { typography } from '../src/theme/typography';
 import { spacing, borderRadius, shadow } from '../src/theme/spacing';
 import { useAuthStore } from '../src/stores/useAuthStore';
 import { api } from '../src/services/api';
 import { BottomNav } from '../src/components/BottomNav';
-import { SOSButton } from '../src/components/SOSButton';
+import { useThemedStyles } from '../src/theme/ThemeProvider';
 
 const NAV = [
   { label: 'Ana Sayfa', icon: '⌂', route: '/caregiver' },
@@ -16,15 +15,17 @@ const NAV = [
 ];
 
 export default function CaregiverScreen() {
+  const styles = useThemedStyles(baseStyles);
   const router = useRouter();
-  const insets = useSafeAreaInsets();
   const userName = useAuthStore((s) => s.userName);
   const [profiles, setProfiles] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
 
   useFocusEffect(useCallback(() => {
     setLoading(true);
-    api.get<any[]>('/dashboard').then(setProfiles).catch(() => {}).finally(() => setLoading(false));
+    api.get<any[]>('/dashboard').then(setProfiles)
+      .catch((error: any) => Alert.alert('Yakınlar yüklenemedi', error?.message || 'Lütfen tekrar deneyin.'))
+      .finally(() => setLoading(false));
   }, []));
 
   if (loading) return <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: colors.background }}>
@@ -86,21 +87,17 @@ export default function CaregiverScreen() {
           <Text style={{ fontSize: 18, marginRight: spacing.sm }}>🔍</Text>
           <Text style={{ ...typography.button, color: colors.primary }}>Gözden Geçir</Text>
         </TouchableOpacity>
-        <TouchableOpacity style={styles.adherenceBtn} onPress={() => router.push('/adherence')}>
-          <Text style={{ fontSize: 18, marginRight: spacing.sm }}>📊</Text>
-          <Text style={{ ...typography.button, color: colors.primary }}>Uyum Raporu</Text>
-        </TouchableOpacity>
         <TouchableOpacity style={[styles.actionBtn, { marginTop: spacing.md, marginBottom: spacing.xxl }]} onPress={() => router.push('/add-profile')}>
           <Text style={{ fontSize: 18, marginRight: spacing.sm }}>👤</Text>
           <Text style={{ ...typography.button, color: colors.primary }}>Yeni Yakın Ekle</Text>
         </TouchableOpacity>
       </ScrollView>
 
-      <BottomNav items={NAV} activeIndex={1} />
+      <BottomNav items={NAV} activeIndex={0} />
     </View>
   );
 }
-const styles = StyleSheet.create({
+const baseStyles = StyleSheet.create({
   avatar: { width: 48, height: 48, borderRadius: 24, backgroundColor: colors.primaryLight + '30', alignItems: 'center', justifyContent: 'center' },
   statCard: { flex: 1, backgroundColor: colors.surface, borderRadius: borderRadius.card, padding: 14, shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.04, shadowRadius: 4, elevation: 1 },
   card: { flexDirection: 'row', alignItems: 'center', backgroundColor: colors.surface, borderRadius: borderRadius.card, padding: 16, marginBottom: spacing.sm },

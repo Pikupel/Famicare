@@ -1,7 +1,6 @@
 import { useState, useCallback } from 'react';
 import { View, Text, TouchableOpacity, StyleSheet, ScrollView, ActivityIndicator, RefreshControl, Alert } from 'react-native';
 import { useRouter, useFocusEffect, useLocalSearchParams } from 'expo-router';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { colors } from '../src/theme/colors';
 import { typography } from '../src/theme/typography';
 import { spacing, borderRadius, shadow } from '../src/theme/spacing';
@@ -10,14 +9,15 @@ import { api } from '../src/services/api';
 import { useAuthStore } from '../src/stores/useAuthStore';
 import { EmptyState } from '../src/components/EmptyState';
 import { isAbnormalValue } from '../src/theme/health-thresholds';
+import { useThemedStyles } from '../src/theme/ThemeProvider';
 
 const TABS = ['Tansiyon', 'Şeker', 'Kilo'];
 const RANGES = ['1 Hafta', '1 Ay', '3 Ay'];
 const RANGE_DAYS = [7, 30, 90];
 
 export default function HealthScreen() {
+  const styles = useThemedStyles(baseStyles);
   const router = useRouter();
-  const insets = useSafeAreaInsets();
   const userId = useAuthStore((s) => s.userId);
   const params = useLocalSearchParams();
   const profileId = String(params.profileId || userId || '');
@@ -32,7 +32,9 @@ export default function HealthScreen() {
     try {
       const data = await api.get<any[]>(`/health/profile/${profileId}`);
       setRecords(data);
-    } catch {}
+    } catch (error: any) {
+      Alert.alert('Sağlık verileri yüklenemedi', error?.message || 'Lütfen tekrar deneyin.');
+    }
     setLoading(false);
     setRefreshing(false);
   }, [profileId]);
@@ -160,7 +162,7 @@ export default function HealthScreen() {
     </View>
   );
 }
-const styles = StyleSheet.create({
+const baseStyles = StyleSheet.create({
   tab: { paddingHorizontal: 16, paddingVertical: 8, borderRadius: 12, backgroundColor: colors.background },
   rangeBtn: { paddingHorizontal: 12, paddingVertical: 6, borderRadius: 8, backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border },
   mainCard: { backgroundColor: colors.surface, borderRadius: borderRadius.card, padding: 24, marginBottom: spacing.lg, alignItems: 'center' },

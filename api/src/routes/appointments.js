@@ -7,18 +7,20 @@ const router = Router();
 router.use(authMiddleware);
 
 router.get('/profile/:profileId', (req, res) => {
-  if (!requireProfileAccess(req, res, req.params.profileId)) return;
-  const appointments = db.data.appointments.filter(a => a.profileId === req.params.profileId);
+  const profile = requireProfileAccess(req, res, req.params.profileId);
+  if (!profile) return;
+  const appointments = db.data.appointments.filter(a => a.profileId === profile.id);
   res.json(appointments);
 });
 
 router.post('/', async (req, res) => {
   const { profileId, title, location, doctorName, date, time, notes } = req.body;
   if (!profileId || !title) return res.status(400).json({ error: 'Profil ID ve başlık gerekli' });
-  if (!requireProfileAccess(req, res, profileId)) return;
+  const profile = requireProfileAccess(req, res, profileId);
+  if (!profile) return;
   if (!isValidAppointment(date, time)) return res.status(400).json({ error: 'Geçerli tarih ve saat girin' });
   const appointment = {
-    id: uuid(), profileId, title, location: location || '', doctorName: doctorName || '',
+    id: uuid(), profileId: profile.id, title, location: location || '', doctorName: doctorName || '',
     date: date || '', time: time || '', notes: notes || '', status: 'upcoming', createdAt: new Date().toISOString(),
   };
   db.data.appointments.push(appointment);
@@ -34,8 +36,17 @@ router.put('/:id', async (req, res) => {
   }
   const idx = db.data.appointments.findIndex(a => a.id === req.params.id);
   if (idx === -1) return res.status(404).json({ error: 'Randevu bulunamadı' });
-  const { profileId: ignoredProfileId, id: ignoredId, ...safeBody } = req.body;
-  db.data.appointments[idx] = { ...db.data.appointments[idx], ...safeBody };
+  const allowed = {};
+  for (const key of ['title', 'location', 'doctorName', 'date', 'time', 'notes']) {
+    if (req.body[key] !== undefined) allowed[key] = req.body[key];
+  }
+  if (req.body.status !== undefined) {
+    if (!['upcoming', 'completed', 'cancelled'].includes(req.body.status)) {
+      return res.status(400).json({ error: 'Geçersiz randevu statüsü' });
+    }
+    allowed.status = req.body.status;
+  }
+  db.data.appointments[idx] = { ...db.data.appointments[idx], ...allowed };
   await db.write();
   res.json(db.data.appointments[idx]);
 });

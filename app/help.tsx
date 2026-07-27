@@ -4,6 +4,7 @@ import { useRouter } from 'expo-router';
 import { colors } from '../src/theme/colors';
 import { typography } from '../src/theme/typography';
 import { spacing, borderRadius } from '../src/theme/spacing';
+import { useThemedStyles } from '../src/theme/ThemeProvider';
 
 const FAQS = [
   { q: 'İlaç nasıl eklenir?', a: 'Ana sayfada "İlaç Ekle" butonuna dokunun. İlaç adı, doz ve saat bilgilerini girin. Bakıcıysanız, yakınınızın profiline gidip "İlaç Ekle"yi kullanabilirsiniz.' },
@@ -16,6 +17,7 @@ const FAQS = [
 ];
 
 export default function HelpScreen() {
+  const styles = useThemedStyles(baseStyles);
   const router = useRouter();
   const [openIndex, setOpenIndex] = useState<number | null>(null);
 
@@ -55,7 +57,7 @@ export default function HelpScreen() {
   );
 }
 
-const styles = StyleSheet.create({
+const baseStyles = StyleSheet.create({
   faqItem: { backgroundColor: colors.surface, borderRadius: borderRadius.card, padding: 16, marginBottom: spacing.sm },
   contactCard: { backgroundColor: colors.surface, borderRadius: borderRadius.card, padding: 16, marginTop: spacing.lg, marginBottom: spacing.xxl, alignItems: 'center' },
 });

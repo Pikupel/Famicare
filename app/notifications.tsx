@@ -1,15 +1,17 @@
 import { useState, useCallback } from 'react';
-import { View, Text, TouchableOpacity, StyleSheet, ScrollView, ActivityIndicator } from 'react-native';
+import { View, Text, TouchableOpacity, StyleSheet, ScrollView, ActivityIndicator, Alert } from 'react-native';
 import { useRouter, useFocusEffect } from 'expo-router';
 import { colors } from '../src/theme/colors';
 import { typography } from '../src/theme/typography';
 import { spacing, borderRadius } from '../src/theme/spacing';
 import { api } from '../src/services/api';
 import { useAuthStore } from '../src/stores/useAuthStore';
+import { useThemedStyles } from '../src/theme/ThemeProvider';
 
 const TABS = ['Tümü', 'İlaç', 'Randevu', 'Sistem'];
 
 export default function NotificationsScreen() {
+  const styles = useThemedStyles(baseStyles);
   const router = useRouter();
   const userId = useAuthStore((s) => s.userId);
   const [tab, setTab] = useState(0);
@@ -18,7 +20,9 @@ export default function NotificationsScreen() {
 
   useFocusEffect(useCallback(() => {
     if (!userId) { setLoading(false); return; }
-    api.get<any[]>(`/notifications`).then(d => setItems(d)).catch(() => {}).finally(() => setLoading(false));
+    api.get<any[]>(`/notifications`).then(d => setItems(d))
+      .catch((error: any) => Alert.alert('Bildirimler yüklenemedi', error?.message || 'Lütfen tekrar deneyin.'))
+      .finally(() => setLoading(false));
   }, [userId]));
 
   const colorMap: Record<string, string> = { missed_dose: colors.danger, taken_confirmation: colors.secondary, appointment_reminder: colors.primary, medication_reminder: colors.primary, system: colors.gray };
@@ -50,14 +54,25 @@ export default function NotificationsScreen() {
             const map: Record<number, string[]> = { 1: ['medication', 'missed'], 2: ['appointment'], 3: ['system'] };
             return map[tab]?.some(k => n.type?.includes(k));
           }).map((n: any) => (
-            <TouchableOpacity key={n.id} style={[styles.notif, { backgroundColor: (colorMap[n.type] || colors.gray) + '12' }]}
-              onPress={() => {
+            <TouchableOpacity key={n.id} style={[styles.notif, { backgroundColor: (colorMap[n.type] || colors.gray) + (n.isRead ? '08' : '18'), opacity: n.isRead ? 0.72 : 1 }]}
+              onPress={async () => {
+                if (!n.isRead) {
+                  try {
+                    await api.put(`/notifications/${n.id}/read`, {});
+                    setItems(current => current.map(item => item.id === n.id ? { ...item, isRead: true } : item));
+                  } catch {}
+                }
                 if (n.type === 'medication_reminder' || n.type === 'missed_dose') {
-                  router.push({ pathname: '/confirm-medication', params: { id: n.data?.medicationId || '', name: n.title?.replace('💊 ','').replace('⚠️ ','') || '', time: n.body?.split(' - ')[1] || '' } });
+                  if (n.data?.medicationId) {
+                    router.push({ pathname: '/confirm-medication', params: { id: n.data.medicationId, name: n.title?.replace('💊 ','').replace('⚠️ ','') || '', time: n.data.scheduledTime || '' } });
+                  }
+                } else if (n.type?.includes('appointment')) {
+                  router.push('/appointments');
                 }
               }}
             >
               <View style={[styles.dot, { backgroundColor: colorMap[n.type] || colors.gray }]} />
+              <Text style={{ fontSize: 20, marginRight: spacing.sm }}>{iconMap[n.type] || 'ℹ️'}</Text>
               <View style={{ flex: 1 }}>
                 <Text style={{ ...typography.body, color: colors.text }}>{n.title}</Text>
                 {n.body ? <Text style={{ ...typography.caption, color: colors.textSecondary, marginTop: 2 }}>{n.body}</Text> : null}
@@ -70,7 +85,7 @@ export default function NotificationsScreen() {
     </View>
   );
 }
-const styles = StyleSheet.create({
+const baseStyles = StyleSheet.create({
   tab: { paddingHorizontal: 14, paddingVertical: 6, borderRadius: 12, backgroundColor: colors.background },
   notif: { flexDirection: 'row', alignItems: 'center', padding: 14, borderRadius: borderRadius.card, marginBottom: spacing.sm },
   dot: { width: 10, height: 10, borderRadius: 5, marginRight: spacing.md },

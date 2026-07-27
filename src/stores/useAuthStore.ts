@@ -10,18 +10,21 @@ interface AuthState {
   userName: string;
   userId: string;
   token: string | null;
+  refreshToken: string | null;
   setRole: (r: Role) => void;
-  login: (name: string, token: string, userId: string, role: Role) => void;
+  login: (name: string, token: string, userId: string, role: Role, refreshToken?: string) => void;
+  updateTokens: (token: string, refreshToken: string) => void;
   logout: () => void;
 }
 
 export const useAuthStore = create<AuthState>()(
   persist(
     (set) => ({
-      role: null, isLoggedIn: false, userName: '', userId: '', token: null,
+      role: null, isLoggedIn: false, userName: '', userId: '', token: null, refreshToken: null,
       setRole: (role) => set({ role }),
-      login: (name, token, userId, role) => set({ isLoggedIn: true, userName: name, token, userId, role }),
-      logout: () => set({ isLoggedIn: false, role: null, userName: '', userId: '', token: null }),
+      login: (name, token, userId, role, refreshToken = '') => set({ isLoggedIn: true, userName: name, token, refreshToken, userId, role }),
+      updateTokens: (token, refreshToken) => set({ token, refreshToken }),
+      logout: () => set({ isLoggedIn: false, role: null, userName: '', userId: '', token: null, refreshToken: null }),
     }),
     {
       name: 'famicare-auth',

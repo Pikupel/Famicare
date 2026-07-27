@@ -1,12 +1,12 @@
 import { PixelRatio, Dimensions } from 'react-native';
 
-const { width, height } = Dimensions.get('window');
+const { width } = Dimensions.get('window');
 const baseWidth = 375;
 const scale = width / baseWidth;
 
 export function normalize(size: number, minimum?: number) {
   const scaled = size * Math.min(scale, 1.5);
-  return Math.round(PixelRatio.roundToNearestPixel(scaled));
+  return Math.max(minimum ?? 0, Math.round(PixelRatio.roundToNearestPixel(scaled)));
 }
 
 export const fontScale = PixelRatio.getFontScale();

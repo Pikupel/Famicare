@@ -1,6 +1,7 @@
 import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
 import { colors } from '../theme/colors';
-import { spacing, borderRadius } from '../theme/spacing';
+import { spacing } from '../theme/spacing';
+import { useThemedStyles } from '../theme/ThemeProvider';
 
 const AVATARS = [
   { id: 'elderly_woman', emoji: '👵' },
@@ -20,6 +21,7 @@ interface AvatarPickerProps {
 }
 
 export function AvatarPicker({ selected, onSelect }: AvatarPickerProps) {
+  const styles = useThemedStyles(baseStyles);
   return (
     <View style={styles.grid}>
       {AVATARS.map((a) => (
@@ -35,7 +37,7 @@ export function AvatarPicker({ selected, onSelect }: AvatarPickerProps) {
   );
 }
 
-const styles = StyleSheet.create({
+const baseStyles = StyleSheet.create({
   grid: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm, justifyContent: 'center' },
   item: { alignItems: 'center', padding: 8, borderRadius: 12, backgroundColor: colors.surface, borderWidth: 2, borderColor: colors.border, width: '20%' },
   selected: { borderColor: colors.primary, backgroundColor: colors.primary + '10' },

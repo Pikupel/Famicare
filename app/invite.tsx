@@ -3,12 +3,14 @@ import { View, Text, TouchableOpacity, StyleSheet, Alert, ActivityIndicator } fr
 import { useRouter, useFocusEffect } from 'expo-router';
 import { colors } from '../src/theme/colors';
 import { typography } from '../src/theme/typography';
-import { spacing, borderRadius } from '../src/theme/spacing';
+import { spacing } from '../src/theme/spacing';
 import { Button } from '../src/components/Button';
 import { api } from '../src/services/api';
 import { useAuthStore } from '../src/stores/useAuthStore';
+import { useThemedStyles } from '../src/theme/ThemeProvider';
 
 export default function InviteScreen() {
+  const styles = useThemedStyles(baseStyles);
   const router = useRouter();
   const role = useAuthStore((s) => s.role);
   const isCaregiver = role === 'caregiver';
@@ -118,7 +120,7 @@ export default function InviteScreen() {
   );
 }
 
-const styles = StyleSheet.create({
+const baseStyles = StyleSheet.create({
   codeBox: { width: 36, height: 48, borderRadius: 10, borderWidth: 2, alignItems: 'center', justifyContent: 'center' },
   key: { width: 72, height: 72, borderRadius: 36, backgroundColor: colors.surface, alignItems: 'center', justifyContent: 'center', shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.08, shadowRadius: 4, elevation: 2 },
 });

@@ -1,18 +1,18 @@
 import { useState, useCallback } from 'react';
 import { View, Text, TouchableOpacity, StyleSheet, ScrollView, ActivityIndicator, Alert } from 'react-native';
 import { useRouter, useFocusEffect } from 'expo-router';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { colors } from '../src/theme/colors';
 import { typography } from '../src/theme/typography';
 import { spacing, borderRadius, shadow } from '../src/theme/spacing';
 import * as Speech from 'expo-speech';
-import { setupNotifications, scheduleMedicationReminder } from '../src/services/notifications';
+import { setupNotifications, syncMedicationReminders } from '../src/services/notifications';
 import { useAuthStore } from '../src/stores/useAuthStore';
 import { api } from '../src/services/api';
 import { EmptyState } from '../src/components/EmptyState';
 import { BottomNav } from '../src/components/BottomNav';
 import { SOSButton } from '../src/components/SOSButton';
 import { cacheData, getCachedData } from '../src/services/cache';
+import { useThemedStyles } from '../src/theme/ThemeProvider';
 
 
 function isTimePassed(timeStr: string | undefined): boolean {
@@ -29,34 +29,50 @@ const NAV = [
 ];
 
 export default function HomeScreen() {
+  const styles = useThemedStyles(baseStyles);
   const router = useRouter();
-  const insets = useSafeAreaInsets();
   const userName = useAuthStore((s) => s.userName);
   const userId = useAuthStore((s) => s.userId);
   const [medications, setMedications] = useState<any[]>([]);
+  const [todayLogs, setTodayLogs] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   useFocusEffect(useCallback(() => {
     if (!userId) { setLoading(false); return; }
     (async () => {
-      getCachedData<any[]>('medications').then(cached => {
-        if (cached) setMedications(cached.data);
+      const cacheKey = `medications:${userId}`;
+      getCachedData<{ medications: any[]; logs: any[] }>(cacheKey).then(cached => {
+        if (cached) {
+          setMedications(cached.data.medications);
+          setTodayLogs(cached.data.logs);
+        }
       });
       setLoading(true);
       try {
-        const data = await api.get<any[]>(`/medications/profile/${userId}`);
-        setMedications(data);
-        cacheData('medications', data);
+        const data = await api.get<{ medications: any[]; logs: any[] }>(`/medications/profile/${userId}/today`);
+        setMedications(data.medications);
+        setTodayLogs(data.logs);
+        cacheData(cacheKey, data);
         await setupNotifications();
-        for (const m of data) {
-          for (const time of m.times || []) await scheduleMedicationReminder(m.id, m.name, time);
-        }
+        await syncMedicationReminders(data.medications);
       } catch {
-        const cached = await getCachedData<any[]>('medications');
+        const cached = await getCachedData(cacheKey);
         if (!cached) Alert.alert('Bağlantı Hatası', 'Sunucuya erişilemiyor.');
       }
       setLoading(false);
     })();
   }, [userId]));
+
+  const completedDoseKeys = new Set(
+    todayLogs
+      .filter(log => ['taken', 'caregiver_marked'].includes(log.status))
+      .map(log => `${log.medicationId}-${log.scheduledTime}`)
+  );
+  const pendingDoses = medications.flatMap((medication: any) =>
+    (medication.times || [])
+      .filter((time: string) => !completedDoseKeys.has(`${medication.id}-${time}`))
+      .map((time: string) => ({ medication, time }))
+  );
+  const totalDoseCount = medications.reduce((sum, medication) => sum + (medication.times?.length || 0), 0);
 
 
 
@@ -87,21 +103,21 @@ export default function HomeScreen() {
               <Text style={{ fontSize: 22 }}>🔊</Text>
             </TouchableOpacity>
           </View>
-          {medications.length === 0 && (
+          {medications.length > 0 && totalDoseCount > 0 && pendingDoses.length === 0 && (
             <Text style={{ ...typography.body, color: colors.secondary, fontWeight: '600', textAlign: 'center', marginBottom: spacing.md }}>
               ✅ Tüm ilaçlarınızı aldınız, harika! 👏
             </Text>
           )}
-          {medications.length > 0 && medications.length <= 2 && (
+          {pendingDoses.length > 0 && pendingDoses.length <= 2 && (
             <Text style={{ ...typography.body, color: colors.warning, fontWeight: '500', textAlign: 'center', marginBottom: spacing.md }}>
-              ⏳ {medications.length} ilacınız kaldı, hadi!
+              ⏳ {pendingDoses.length} dozunuz kaldı, hadi!
             </Text>
           )}
           {medications.length === 0 ? (
             <EmptyState icon="💊" title="Henüz ilaç eklenmemiş" description="İlaçlarınızı eklemek için aşağıdaki butonu kullanın." actionLabel="İlaç Ekle" onAction={() => router.push('/add-medication')} />
           ) : (
             <>
-              {medications.flatMap((m: any) => (m.times || []).map((time: string) => (
+              {pendingDoses.map(({ medication: m, time }) => (
                 <View key={`${m.id}-${time}`} style={[styles.medRow, isTimePassed(time) && { borderLeftWidth: 3, borderLeftColor: colors.danger }]}>
                   <TouchableOpacity style={{ width: 56, minHeight: 48, justifyContent: 'center' }} onPress={() => router.push({ pathname: '/confirm-medication', params: { id: m.id, name: m.name, dosage: m.dosage, purpose: m.purpose || '', time } })}>
                     <Text style={{ ...typography.h2, fontSize: 20, color: isTimePassed(time) ? colors.danger : colors.primary }}>{time}</Text>
@@ -115,7 +131,7 @@ export default function HomeScreen() {
                     <Text style={{ fontSize: 18 }}>🔊</Text>
                   </TouchableOpacity>
                 </View>
-              )))}
+              ))}
             </>
           )}
         </View>
@@ -126,7 +142,7 @@ export default function HomeScreen() {
     </View>
   );
 }
-const styles = StyleSheet.create({
+const baseStyles = StyleSheet.create({
   header: { flexDirection: 'row', alignItems: 'center', paddingTop: 56, paddingHorizontal: spacing.lg, paddingBottom: spacing.md, backgroundColor: colors.surface },
   avatar: { width: 48, height: 48, borderRadius: 24, backgroundColor: colors.primaryLight + '30', alignItems: 'center', justifyContent: 'center', marginRight: spacing.md },
   card: { backgroundColor: colors.surface, borderRadius: borderRadius.card, padding: 20, marginHorizontal: spacing.lg },

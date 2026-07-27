@@ -1,7 +1,6 @@
 import { useState, useCallback } from 'react';
 import { View, Text, TouchableOpacity, StyleSheet, ScrollView, ActivityIndicator, Alert } from 'react-native';
 import { useRouter, useFocusEffect, useLocalSearchParams } from 'expo-router';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { colors } from '../src/theme/colors';
 import { typography } from '../src/theme/typography';
 import { spacing, borderRadius, shadow } from '../src/theme/spacing';
@@ -11,12 +10,14 @@ import { Button } from '../src/components/Button';
 import { File, Paths } from 'expo-file-system';
 import * as Sharing from 'expo-sharing';
 import { BASE_URL } from '../src/services/api';
+import { localDate, addCalendarDays } from '../src/services/date';
+import { useThemedStyles } from '../src/theme/ThemeProvider';
 
 const DAYS = ['Pzt', 'Sal', 'Çar', 'Per', 'Cum', 'Cmt', 'Paz'];
 export default function ReportsScreen() {
+  const styles = useThemedStyles(baseStyles);
   const router = useRouter();
   const params = useLocalSearchParams();
-  const insets = useSafeAreaInsets();
   const userId = useAuthStore((s) => s.userId);
   const userName = useAuthStore((s) => s.userName);
   const profileName = String(params.profileName || userName || 'Kullanıcı');
@@ -35,19 +36,19 @@ export default function ReportsScreen() {
     ]).then(([meds, logData]) => {
       setMedications(meds);
       setLogs(logData);
-    }).catch(() => {}).finally(() => setLoading(false));
+    }).catch((error: any) => Alert.alert('Rapor verileri yüklenemedi', error?.message || 'Lütfen tekrar deneyin.'))
+      .finally(() => setLoading(false));
   }, [profileId]));
 
   const totalDoses = medications.reduce((s, m) => s + (m.times?.length || 0), 0);
-  const today = new Date().toISOString().split('T')[0];
+  const today = localDate();
   const todayLogs = logs.filter(l => l.date === today);
-  const takenToday = todayLogs.filter(l => l.status === 'taken').length;
-  const avgAdherence = totalDoses > 0 ? Math.min(100, Math.round((todayLogs.filter(l => l.status === 'taken').length / totalDoses) * 100)) : 0;
+  const takenToday = todayLogs.filter(l => ['taken', 'caregiver_marked'].includes(l.status)).length;
+  const avgAdherence = totalDoses > 0 ? Math.min(100, Math.round((takenToday / totalDoses) * 100)) : 0;
   const chartDays = period === 'weekly' ? 7 : 30;
   const chartData = Array.from({ length: chartDays }, (_, offset) => {
-    const date = new Date();
-    date.setDate(date.getDate() - (chartDays - offset - 1));
-    const key = date.toISOString().split('T')[0];
+    const key = addCalendarDays(today, -(chartDays - offset - 1));
+    const date = new Date(`${key}T12:00:00`);
     const taken = logs.filter(log => log.date === key && ['taken', 'caregiver_marked'].includes(log.status)).length;
     return { label: period === 'weekly' ? DAYS[(date.getDay() + 6) % 7] : String(date.getDate()), value: totalDoses ? Math.min(100, Math.round(taken / totalDoses * 100)) : 0 };
   });
@@ -123,7 +124,7 @@ export default function ReportsScreen() {
   );
 }
 
-const styles = StyleSheet.create({
+const baseStyles = StyleSheet.create({
   adherenceCard: { backgroundColor: colors.surface, borderRadius: borderRadius.card, padding: 20, marginBottom: spacing.lg },
   periodBtn: { flex: 1, paddingVertical: 8, alignItems: 'center', borderRadius: 8 },
   statBox: { flex: 1, backgroundColor: colors.surface, borderRadius: borderRadius.card, padding: 16, marginBottom: spacing.md },

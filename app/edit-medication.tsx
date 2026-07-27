@@ -1,21 +1,23 @@
 import { useState } from 'react';
 import { View, Text, TextInput, TouchableOpacity, StyleSheet, ScrollView, Alert, KeyboardAvoidingView, Platform } from 'react-native';
 import { useRouter, useLocalSearchParams } from 'expo-router';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { colors } from '../src/theme/colors';
 import { typography } from '../src/theme/typography';
 import { spacing, borderRadius } from '../src/theme/spacing';
 import { Button } from '../src/components/Button';
 import { api } from '../src/services/api';
+import { cancelMedicationReminders } from '../src/services/notifications';
+import { useThemedStyles } from '../src/theme/ThemeProvider';
 
 export default function EditMedicationScreen() {
+  const styles = useThemedStyles(baseStyles);
   const router = useRouter();
-  const insets = useSafeAreaInsets();
   const { id, medName, medDosage, editTimes, medStock, medPurpose } = useLocalSearchParams();
   const initialTimes = editTimes ? String(editTimes).split(',') : ['09:00'];
   const [name, setName] = useState(String(medName || ''));
   const [dosage, setDosage] = useState(String(medDosage || ''));
   const [purpose, setPurpose] = useState(String(medPurpose || ''));
+  const [stockTotal, setStockTotal] = useState(String(medStock || ''));
   const [times, setTimes] = useState<string[]>(initialTimes);
   const [saving, setSaving] = useState(false);
 
@@ -26,7 +28,7 @@ export default function EditMedicationScreen() {
     }
     setSaving(true);
     try {
-      await api.patch(`/medications/${id}`, { name: name.trim(), dosage, times, purpose });
+      await api.patch(`/medications/${id}`, { name: name.trim(), dosage, times, purpose, stockTotal: stockTotal === '' ? undefined : Number(stockTotal) });
       Alert.alert('Başarılı', 'İlaç güncellendi');
       router.back();
     } catch (e: any) { Alert.alert('Hata', e.message); }
@@ -37,7 +39,8 @@ export default function EditMedicationScreen() {
     Alert.alert('İlacı Sil', 'Emin misiniz?', [
       { text: 'İptal', style: 'cancel' },
       { text: 'Sil', style: 'destructive', onPress: async () => {
-        try { await api.del(`/medications/${id}`); router.back(); } catch {}
+        try { await api.del(`/medications/${id}`); await cancelMedicationReminders(String(id)); router.back(); }
+        catch (error: any) { Alert.alert('İlaç silinemedi', error?.message || 'Lütfen tekrar deneyin.'); }
       }},
     ]);
   };
@@ -68,17 +71,15 @@ export default function EditMedicationScreen() {
           </View>
         ))}
         <TouchableOpacity onPress={addTime} style={{ minHeight: 48, justifyContent: 'center' }}><Text style={{ ...typography.body, color: colors.primary, fontWeight: '600' }}>+ Saat Ekle</Text></TouchableOpacity>
-        {medStock && <View style={{ backgroundColor: colors.primaryLight + '15', borderRadius: 12, padding: 12, marginTop: spacing.md }}>
-          <Text style={{ ...typography.caption, color: colors.textSecondary }}>Kalan Stok</Text>
-          <Text style={{ ...typography.h2, color: colors.primary }}>{String(medStock)} adet</Text>
-        </View>}
+        <Text style={styles.label}>Kalan stok / yeni kutu miktarı</Text>
+        <TextInput style={styles.input} value={stockTotal} onChangeText={(value) => setStockTotal(value.replace(/\D/g, ''))} keyboardType="numeric" placeholder="Örn: 28" />
         <Button title={saving ? 'Kaydediliyor...' : 'Kaydet'} onPress={save} disabled={saving} style={{ marginTop: spacing.xl }} />
         <TouchableOpacity style={styles.deleteBtn} onPress={handleDelete}><Text style={{ ...typography.button, color: colors.danger }}>İlacı Sil</Text></TouchableOpacity>
       </ScrollView>
     </KeyboardAvoidingView>
   );
 }
-const styles = StyleSheet.create({
+const baseStyles = StyleSheet.create({
   label: { ...typography.caption, color: colors.textSecondary, marginBottom: spacing.xs, marginTop: spacing.md },
   input: { backgroundColor: colors.surface, borderRadius: borderRadius.input, paddingHorizontal: 16, paddingVertical: 14, fontSize: 16, color: colors.text, borderWidth: 1, borderColor: colors.border, marginBottom: spacing.sm, minHeight: 48 },
   deleteBtn: { marginTop: spacing.lg, padding: 16, alignItems: 'center', borderWidth: 1, borderColor: colors.danger, borderRadius: borderRadius.button, minHeight: 48, justifyContent: 'center' },

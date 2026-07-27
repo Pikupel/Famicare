@@ -9,18 +9,15 @@ import { Button } from '../src/components/Button';
 import { useAuthStore } from '../src/stores/useAuthStore';
 import { api } from '../src/services/api';
 import { AvatarPicker } from '../src/components/AvatarPicker';
-
-const AVATAR_MAP: Record<string, string> = {
-  elderly_woman: '👵', elderly_man: '👴', elderly_hijabi: '🧕',
-  woman: '👩', man: '👨', young_woman: '👧', young_man: '👦',
-  girl: '👶', doctor: '👨‍⚕️',
-};
+import { useThemedStyles } from '../src/theme/ThemeProvider';
 
 export default function EditProfileScreen() {
+  const styles = useThemedStyles(baseStyles);
   const router = useRouter();
   const userName = useAuthStore((s) => s.userName);
   const login = useAuthStore((s) => s.login);
   const token = useAuthStore((s) => s.token);
+  const refreshToken = useAuthStore((s) => s.refreshToken);
   const userId = useAuthStore((s) => s.userId);
   const role = useAuthStore((s) => s.role);
   const [name, setName] = useState(userName);
@@ -35,7 +32,7 @@ export default function EditProfileScreen() {
       await api.patch('/me', { name: name.trim() });
       if (avatar) await AsyncStorage.setItem('famicare_avatar', avatar);
       if (bloodType) await AsyncStorage.setItem('famicare_bloodtype', bloodType);
-      login(name.trim(), token || '', userId, role);
+      login(name.trim(), token || '', userId, role, refreshToken || '');
       Alert.alert('Başarılı', 'Profil güncellendi');
       router.back();
     } catch (e: any) { Alert.alert('Hata', e.message); }
@@ -66,7 +63,7 @@ export default function EditProfileScreen() {
     </ScrollView>
   );
 }
-const styles = StyleSheet.create({
+const baseStyles = StyleSheet.create({
   label: { ...typography.caption, color: colors.textSecondary, marginBottom: spacing.xs, marginTop: spacing.md },
   input: { backgroundColor: colors.surface, borderRadius: borderRadius.input, paddingHorizontal: 16, paddingVertical: 14, fontSize: 16, color: colors.text, borderWidth: 1, borderColor: colors.border, marginBottom: spacing.sm, minHeight: 48 },
   pill: { paddingHorizontal: 10, paddingVertical: 6, borderRadius: 8, backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border, marginBottom: 4 },

@@ -1,10 +1,12 @@
 import { Router } from 'express';
 import bcrypt from 'bcryptjs';
 import { db, uuid, deleteRelationalData, pgPool } from '../db.js';
-import { generateToken } from '../middleware/auth.js';
 import { removeUserFromState } from '../services/user-deletion.js';
+import { createSession, rotateSession, revokeSession, revokeUserSessions } from '../services/sessions.js';
+import { requestPhoneVerification, consumePhoneVerification } from '../services/phone-verification.js';
 
 const router = Router();
+const isUnverifiedRegistrationEnabled = () => process.env.ALLOW_UNVERIFIED_REGISTRATION === 'true';
 
 router.post('/register', async (req, res) => {
   const { name, role, pin } = req.body;
@@ -16,13 +18,30 @@ router.post('/register', async (req, res) => {
   if (existing) {
     return res.status(409).json({ error: 'Bu telefon zaten kayıtlı' });
   }
+  if (!isUnverifiedRegistrationEnabled() && !await consumePhoneVerification(req.body.verificationId, phone, req.body.verificationCode)) {
+    return res.status(401).json({ error: 'Telefon doğrulama kodu geçersiz veya süresi dolmuş' });
+  }
   const pinHash = await bcrypt.hash(pin, 12);
   const user = { id: uuid(), phone, name, role, pinHash, timezone: 'Europe/Istanbul', createdAt: new Date().toISOString() };
   db.data.users.push(user);
   // Profile will be created manually by caregiver via add-profile screen
   await db.write();
-  const token = generateToken(user);
-  res.status(201).json({ user: { id: user.id, name: user.name, role: user.role, phone: user.phone }, token });
+  const session = await createSession(user);
+  res.status(201).json({ user: { id: user.id, name: user.name, role: user.role, phone: user.phone }, ...session });
+});
+
+router.post('/request-verification', async (req, res) => {
+  const phone = normalizePhone(req.body?.phone);
+  if (isUnverifiedRegistrationEnabled() && phone && !db.data.users.some(user => user.phone === phone)) {
+    return res.json({ verificationRequired: false });
+  }
+  if (!phone) return res.status(400).json({ error: 'Geçerli telefon numarası gerekli' });
+  if (db.data.users.some(user => user.phone === phone)) return res.status(409).json({ error: 'Bu telefon zaten kayıtlı' });
+  try {
+    res.json(await requestPhoneVerification(phone));
+  } catch (error) {
+    res.status(503).json({ error: error.message || 'Doğrulama kodu gönderilemedi' });
+  }
 });
 
 router.post('/login', async (req, res) => {
@@ -51,8 +70,19 @@ router.post('/login', async (req, res) => {
   user.failedLoginAttempts = 0;
   user.loginBlockedUntil = null;
   await db.write();
-  const token = generateToken(user);
-  res.json({ user: { id: user.id, name: user.name, role: user.role, phone: user.phone }, token });
+  const session = await createSession(user);
+  res.json({ user: { id: user.id, name: user.name, role: user.role, phone: user.phone }, ...session });
+});
+
+router.post('/refresh', async (req, res) => {
+  const session = await rotateSession(req.body?.refreshToken);
+  if (!session) return res.status(401).json({ error: 'Oturum yenilenemedi' });
+  res.json(session);
+});
+
+router.post('/logout', async (req, res) => {
+  await revokeSession(req.body?.refreshToken);
+  res.json({ success: true });
 });
 
 router.post('/delete-account', async (req, res) => {
@@ -78,6 +108,7 @@ router.post('/delete-account', async (req, res) => {
     return res.status(401).json({ error: 'Telefon veya PIN hatalı' });
   }
   const deletion = removeUserFromState(user.id);
+  revokeUserSessions(user.id);
   await db.write();
   await deleteRelationalData({ userIds: [user.id], profileIds: deletion.profileIds });
   res.json({ success: true });

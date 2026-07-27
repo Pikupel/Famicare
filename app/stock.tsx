@@ -1,34 +1,38 @@
 import { useState, useCallback } from 'react';
-import { View, Text, TouchableOpacity, StyleSheet, ScrollView, ActivityIndicator } from 'react-native';
+import { View, Text, TouchableOpacity, StyleSheet, ScrollView, ActivityIndicator, Alert } from 'react-native';
 import { useRouter, useFocusEffect } from 'expo-router';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { colors } from '../src/theme/colors';
 import { typography } from '../src/theme/typography';
 import { spacing, borderRadius, shadow } from '../src/theme/spacing';
 import { api } from '../src/services/api';
 import { useAuthStore } from '../src/stores/useAuthStore';
-import { Button } from '../src/components/Button';
+import { useThemedStyles } from '../src/theme/ThemeProvider';
 
 export default function StockScreen() {
+  const styles = useThemedStyles(baseStyles);
   const router = useRouter();
-  const insets = useSafeAreaInsets();
   const userId = useAuthStore((s) => s.userId);
   const [medications, setMedications] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
 
   useFocusEffect(useCallback(() => {
     if (!userId) { setLoading(false); return; }
-    api.get<any[]>(`/medications/profile/${userId}`).then(setMedications).catch(() => {}).finally(() => setLoading(false));
+    api.get<any[]>(`/medications/profile/${userId}`).then(setMedications)
+      .catch((error: any) => Alert.alert('Stok bilgisi yüklenemedi', error?.message || 'Lütfen tekrar deneyin.'))
+      .finally(() => setLoading(false));
   }, [userId]));
 
   const refill = async (id: string) => {
     try {
-      await api.post(`/medications/${id}/refill`, {});
-      setMedications(prev => prev.map(m => m.id === id ? { ...m, stockTotal: m.stockTotal } : m));
-    } catch {}
+      const updated = await api.post<any>(`/medications/${id}/refill`, {});
+      setMedications(prev => prev.map(m => m.id === id ? updated : m));
+      Alert.alert('Stok yenilendi', `${updated.name} için kalan stok ${updated.stockTotal} olarak güncellendi.`);
+    } catch (error: any) {
+      Alert.alert('Stok güncellenemedi', error?.message || 'Lütfen tekrar deneyin.');
+    }
   };
 
-  const hasStock = medications.filter(m => m.stockTotal);
+  const hasStock = medications.filter(m => m.stockTotal !== null && m.stockTotal !== undefined && m.stockTotal !== '');
   const critical = hasStock.filter(m => Number(m.stockTotal) <= 10);
   const low = hasStock.filter(m => Number(m.stockTotal) > 10 && Number(m.stockTotal) <= 30);
 
@@ -48,14 +52,16 @@ export default function StockScreen() {
           <>
             <Text style={{ ...typography.h3, color: colors.danger, marginBottom: spacing.sm }}>🔴 Kritik</Text>
             {critical.map(m => {
-              const daysLeft = Math.round(Number(m.stockTotal) / (m.times?.length || 1));
+              const dailyUnits = (m.times?.length || 1) * (Number(m.unitsPerDose) || 1);
+              const daysLeft = Math.floor(Number(m.stockTotal) / dailyUnits);
+              const capacity = Number(m.packageCapacity) || Number(m.stockTotal) || 1;
               return (
                 <View key={m.id} style={[styles.card, { borderLeftColor: colors.danger, borderLeftWidth: 4 }, shadow.card]}>
                   <View style={{ flex: 1 }}>
                     <Text style={{ ...typography.body, fontWeight: '600', color: colors.text }}>{m.name}</Text>
                     <Text style={{ ...typography.caption, color: colors.textSecondary }}>{m.stockTotal} adet • ~{daysLeft} günlük doz</Text>
                     <View style={[styles.bar, { backgroundColor: colors.danger + '20' }]}>
-                      <View style={[styles.barFill, { width: `${Math.min(100, (Number(m.stockTotal) / 100) * 100)}%`, backgroundColor: colors.danger }]} />
+                      <View style={[styles.barFill, { width: `${Math.min(100, (Number(m.stockTotal) / capacity) * 100)}%`, backgroundColor: colors.danger }]} />
                     </View>
                   </View>
                   <TouchableOpacity style={styles.refillBtn} onPress={() => refill(m.id)}>
@@ -76,9 +82,12 @@ export default function StockScreen() {
                   <Text style={{ ...typography.body, fontWeight: '600', color: colors.text }}>{m.name}</Text>
                   <Text style={{ ...typography.caption, color: colors.textSecondary }}>{m.stockTotal} adet</Text>
                   <View style={[styles.bar, { backgroundColor: colors.warning + '20' }]}>
-                    <View style={[styles.barFill, { width: `${Math.min(100, (Number(m.stockTotal) / 100) * 100)}%`, backgroundColor: colors.warning }]} />
+                    <View style={[styles.barFill, { width: `${Math.min(100, (Number(m.stockTotal) / (Number(m.packageCapacity) || Number(m.stockTotal) || 1)) * 100)}%`, backgroundColor: colors.warning }]} />
                   </View>
                 </View>
+                <TouchableOpacity style={styles.refillBtn} onPress={() => refill(m.id)}>
+                  <Text style={{ ...typography.small, color: colors.primary, fontWeight: '600' }}>Yenile</Text>
+                </TouchableOpacity>
               </View>
             ))}
           </>
@@ -101,7 +110,7 @@ export default function StockScreen() {
   );
 }
 
-const styles = StyleSheet.create({
+const baseStyles = StyleSheet.create({
   card: { flexDirection: 'row', alignItems: 'center', backgroundColor: colors.surface, borderRadius: borderRadius.card, padding: 14, marginBottom: spacing.sm },
   bar: { height: 6, borderRadius: 3, marginTop: spacing.sm },
   barFill: { height: 6, borderRadius: 3 },
