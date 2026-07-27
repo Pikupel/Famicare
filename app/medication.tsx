@@ -50,7 +50,7 @@ export default function MedicationScreen() {
   return (
     <View style={{ flex: 1, backgroundColor: colors.background }}>
       <View style={{ paddingTop: 56, paddingHorizontal: spacing.lg, paddingBottom: spacing.sm, backgroundColor: colors.surface }}>
-        <TouchableOpacity onPress={() => router.replace(role === 'caregiver' ? '/caregiver' : '/home')} style={{ minHeight: 48, justifyContent: 'center' }}><Text style={{ fontSize: 28, color: colors.text }}>←</Text></TouchableOpacity>
+        <TouchableOpacity onPress={() => router.back()} style={{ minHeight: 48, justifyContent: 'center' }}><Text style={{ fontSize: 28, color: colors.text }}>←</Text></TouchableOpacity>
         <Text style={{ ...typography.h2, color: colors.text, marginTop: spacing.sm }}>Tüm İlaçlarım</Text>
       </View>
 

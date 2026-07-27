@@ -25,7 +25,7 @@ router.post('/', authMiddleware, async (req, res) => {
   if (caregiverId) {
     const title = '🆘 Acil yardım isteği';
     const body = `${req.user.name || 'Yakınınız'} yardım istedi. Durumu hemen kontrol edin; gerekiyorsa 112’yi arayın.`;
-    db.data.notifications.push({ id: uuid(), userId: caregiverId, type: 'emergency', title, body, isRead: false, createdAt: new Date().toISOString() });
+    db.data.notifications.push({ id: uuid(), userId: caregiverId, type: 'emergency', title, body, data: { type: 'emergency', emergencyId: emergency.id, profileId: targetProfileId }, isRead: false, createdAt: new Date().toISOString() });
     await sendPush(caregiverId, title, body, { type: 'emergency', emergencyId: emergency.id });
   }
   await db.write();

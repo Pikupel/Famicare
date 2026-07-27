@@ -55,7 +55,7 @@ export default function AppointmentsScreen() {
   return (
     <View style={{ flex: 1, backgroundColor: colors.background }}>
       <View style={{ paddingTop: 56, paddingHorizontal: spacing.lg, paddingBottom: spacing.md, backgroundColor: colors.surface }}>
-        <TouchableOpacity onPress={() => { const r = useAuthStore.getState().role; router.replace(r === 'caregiver' ? '/caregiver' : '/home'); }} style={{ minHeight: 48, justifyContent: 'center' }}><Text style={{ fontSize: 28, color: colors.text }}>←</Text></TouchableOpacity>
+        <TouchableOpacity onPress={() => router.back()} style={{ minHeight: 48, justifyContent: 'center' }}><Text style={{ fontSize: 28, color: colors.text }}>←</Text></TouchableOpacity>
         <Text style={{ ...typography.h2, color: colors.text, marginTop: spacing.sm }}>Randevularım</Text>
       </View>
 

@@ -8,7 +8,44 @@ import { requestPhoneVerification, consumePhoneVerification } from '../services/
 const router = Router();
 const isUnverifiedRegistrationEnabled = () => process.env.ALLOW_UNVERIFIED_REGISTRATION === 'true';
 
+const verificationAttempts = new Map();
+function checkVerificationRate(req, res) {
+  const ip = req.ip || 'unknown';
+  const record = verificationAttempts.get(ip);
+  if (record && record.blockUntil > Date.now()) {
+    res.status(429).json({ error: 'Çok fazla doğrulama isteği. Lütfen 15 dakika bekleyin.' });
+    return false;
+  }
+  const count = (record?.count || 0) + 1;
+  if (count > 5) {
+    verificationAttempts.set(ip, { count: 0, blockUntil: Date.now() + 15 * 60 * 1000 });
+    res.status(429).json({ error: 'Çok fazla doğrulama isteği. Lütfen 15 dakika bekleyin.' });
+    return false;
+  }
+  verificationAttempts.set(ip, { count, blockUntil: 0 });
+  return true;
+}
+
+const registrationAttempts = new Map();
+function checkRegistrationRate(req, res) {
+  const ip = req.ip || 'unknown';
+  const record = registrationAttempts.get(ip);
+  if (record && record.blockUntil > Date.now()) {
+    res.status(429).json({ error: 'Çok fazla kayıt denemesi. Lütfen 1 saat bekleyin.' });
+    return false;
+  }
+  const count = (record?.count || 0) + 1;
+  if (count > 10) {
+    registrationAttempts.set(ip, { count: 0, blockUntil: Date.now() + 60 * 60 * 1000 });
+    res.status(429).json({ error: 'Çok fazla kayıt denemesi. Lütfen 1 saat bekleyin.' });
+    return false;
+  }
+  registrationAttempts.set(ip, { count, blockUntil: 0 });
+  return true;
+}
+
 router.post('/register', async (req, res) => {
+  if (!checkRegistrationRate(req, res)) return;
   const { name, role, pin } = req.body;
   const phone = normalizePhone(req.body.phone);
   if (!phone || !name || !['caregiver', 'elderly'].includes(role) || !/^\d{4,6}$/.test(pin || '')) {
@@ -31,6 +68,7 @@ router.post('/register', async (req, res) => {
 });
 
 router.post('/request-verification', async (req, res) => {
+  if (!checkVerificationRate(req, res)) return;
   const phone = normalizePhone(req.body?.phone);
   if (isUnverifiedRegistrationEnabled() && phone && !db.data.users.some(user => user.phone === phone)) {
     return res.json({ verificationRequired: false });

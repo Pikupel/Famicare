@@ -60,7 +60,7 @@ export default function NotificationsScreen() {
                   try {
                     await api.put(`/notifications/${n.id}/read`, {});
                     setItems(current => current.map(item => item.id === n.id ? { ...item, isRead: true } : item));
-                  } catch {}
+                  } catch { setItems(current => current.map(item => item.id === n.id ? { ...item, isRead: false } : item)); }
                 }
                 if (n.type === 'medication_reminder' || n.type === 'missed_dose') {
                   if (n.data?.medicationId) {

@@ -75,7 +75,7 @@ export default function AddAppointmentScreen() {
   return (
     <ScrollView style={{ flex: 1, backgroundColor: colors.background }} keyboardShouldPersistTaps="handled" contentContainerStyle={{ paddingBottom: spacing.xxl + 120 }}>
       <View style={{ paddingTop: 56, paddingHorizontal: spacing.lg, paddingBottom: spacing.md, backgroundColor: colors.surface }}>
-        <TouchableOpacity onPress={() => router.push(useAuthStore.getState().role === 'caregiver' ? '/caregiver' : '/home')} style={{ minHeight: 48, justifyContent: 'center' }}><Text style={{ fontSize: 28, color: colors.text }}>←</Text></TouchableOpacity>
+        <TouchableOpacity onPress={() => router.back()} style={{ minHeight: 48, justifyContent: 'center' }}><Text style={{ fontSize: 28, color: colors.text }}>←</Text></TouchableOpacity>
         <Text style={{ ...typography.h2, color: colors.text, marginTop: spacing.sm }}>{isEdit ? 'Randevu Düzenle' : 'Randevu Ekle'}</Text>
       </View>
       <View style={{ padding: spacing.lg }}>

@@ -1,5 +1,5 @@
 import { useState, useCallback } from 'react';
-import { View, Text, TouchableOpacity, StyleSheet, ScrollView, ActivityIndicator } from 'react-native';
+import { View, Text, TouchableOpacity, StyleSheet, ScrollView, ActivityIndicator, Alert } from 'react-native';
 import { useRouter, useFocusEffect } from 'expo-router';
 import { colors } from '../src/theme/colors';
 import { typography } from '../src/theme/typography';
@@ -19,7 +19,7 @@ export default function DrugSafetyScreen() {
     if (!userId) { setLoading(false); return; }
     api.get<any[]>(`/medications/profile/${userId}`)
       .then(setMedications)
-      .catch(() => { setMedications([]); })
+      .catch(() => { setMedications([]); Alert.alert('Yüklenemedi', 'İlaç bilgileri alınamadı. Lütfen tekrar deneyin.'); })
       .finally(() => setLoading(false));
   }, [userId]));
 

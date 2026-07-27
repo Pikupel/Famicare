@@ -33,8 +33,9 @@ export default function DeleteAccountScreen() {
             try {
               await api.del('/me', { pin, confirmation });
               logout();
-              router.replace('/welcome');
-              Alert.alert('Hesap silindi', 'Hesabınız ve ilişkili uygulama verileriniz silindi.');
+              Alert.alert('Hesap silindi', 'Hesabınız ve ilişkili uygulama verileriniz silindi.', [
+                { text: 'Tamam', onPress: () => router.replace('/welcome') }
+              ]);
             } catch (error: any) {
               Alert.alert('Hesap silinemedi', error.message);
             } finally {

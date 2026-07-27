@@ -87,7 +87,11 @@ export default function LoginScreen() {
           {isExisting ? 'Kayıtlı kullanıcı girişi' : (role === 'caregiver' ? 'Yakınım İçin' : 'Kendim İçin')}
         </Text>
       </View>
-
+      {step === 'phone' && (
+        <TouchableOpacity onPress={() => router.back()} style={{ alignSelf: 'flex-start', marginBottom: spacing.sm, minHeight: 44, justifyContent: 'center' }}>
+          <Text style={{ ...typography.body, color: colors.textLight }}>← Geri</Text>
+        </TouchableOpacity>
+      )}
       {step === 'phone' ? (
         <>
           <Text style={{ ...typography.body, color: colors.text, textAlign: 'center', marginBottom: spacing.lg }}>

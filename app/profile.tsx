@@ -166,9 +166,6 @@ export default function ProfileScreen() {
             <TouchableOpacity style={styles.helpBtn} onPress={toggleTheme}>
               <Text style={{ ...typography.button, color: colors.textLight }}>{isDark ? '☀️' : '🌙'} {isDark ? 'Aydınlık Tema' : 'Karanlık Tema'}</Text>
             </TouchableOpacity>
-            <TouchableOpacity style={styles.helpBtn} onPress={async () => { const { sendTestNotification, setupNotifications } = await import('../src/services/notifications'); await setupNotifications(); const ok = await sendTestNotification(); Alert.alert(ok ? '✅ Bildirim Gönderildi' : '❌ Hata', ok ? 'Telefonunu 2 saniye içinde bir bildirim gelecek.' : 'Bildirim gönderilemedi.'); }}>
-              <Text style={{ ...typography.button, color: colors.textLight }}>🔔 Test Bildirimi</Text>
-            </TouchableOpacity>
             <TouchableOpacity style={styles.helpBtn} onPress={() => router.push('/help')}>
               <Text style={{ ...typography.button, color: colors.textLight }}>❓ Yardım</Text>
             </TouchableOpacity>
@@ -176,7 +173,7 @@ export default function ProfileScreen() {
               <Text style={{ ...typography.button, color: colors.danger }}>Hesabımı ve Verilerimi Sil</Text>
             </TouchableOpacity>
             <TouchableOpacity style={styles.logoutBtn} onPress={async () => {
-              if (refreshToken) await api.post('/auth/logout', { refreshToken }).catch(() => {});
+              if (refreshToken) await api.post('/auth/logout', { refreshToken }).catch((e: any) => { if (e?.status !== 401) Alert.alert('Uyarı', 'Oturum sunucuda kapatılamadı. Yeniden giriş yapmanız gerekebilir.'); });
               await clearAllMedicationReminders();
               logout();
               router.replace('/welcome');

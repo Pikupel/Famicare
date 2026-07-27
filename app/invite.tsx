@@ -25,7 +25,7 @@ export default function InviteScreen() {
     } else {
       setLoading(false);
     }
-  }, []));
+  }, [isCaregiver]));
 
   const handleDigit = (d: string) => { if (code.length < 8) setCode(code + d); };
   const handleDelete = () => setCode(code.slice(0, -1));

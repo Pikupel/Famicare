@@ -39,7 +39,8 @@ export default function AddMedicationScreen() {
       Alert.alert('Uyarı', 'Saatleri SS:DD biçiminde ve geçerli aralıkta girin'); return;
     }
     setSaving(true);
-    const targetProfileId = profileId || userId || 'default';
+    const targetProfileId = profileId || userId;
+    if (!targetProfileId) { Alert.alert('Hata', 'Profil bulunamadı. Lütfen tekrar giriş yapın.'); setSaving(false); return; }
     try {
       await api.post('/medications', { profileId: targetProfileId, name, dosage, instructions: instruction, times, endDate, purpose, stockTotal: stockTotal ? Number(stockTotal) : undefined, unitsPerDose: Number(unitsPerDose) || 1, drugRefId });
       Alert.alert('Başarılı', 'İlaç eklendi');

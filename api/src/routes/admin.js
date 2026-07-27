@@ -2,8 +2,8 @@ import { Router } from 'express';
 import { db, uuid, pgPool, deleteRelationalData } from '../db.js';
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
-import { timingSafeEqual } from 'crypto';
-import { verify as verifyTotp } from 'otplib';
+import { timingSafeEqual, randomBytes } from 'crypto';
+import { verify as verifyTotp, generateSecret } from 'otplib';
 import { createTitckPreview, consumeTitckPreview } from '../services/titck-import.js';
 import { removeUserFromState } from '../services/user-deletion.js';
 import { revokeUserSessions } from '../services/sessions.js';
@@ -16,10 +16,13 @@ const ADMIN_SESSION_SECRET = process.env.ADMIN_SESSION_SECRET;
 if (process.env.NODE_ENV === 'production' && (!ADMIN_USERNAME || !ADMIN_PASSWORD_HASH || !ADMIN_TOTP_SECRET || !ADMIN_SESSION_SECRET)) {
   throw new Error('ADMIN_USERNAME, ADMIN_PASSWORD_HASH, ADMIN_TOTP_SECRET ve ADMIN_SESSION_SECRET üretim ortamında zorunludur');
 }
+if (!ADMIN_TOTP_SECRET && !ADMIN_SESSION_SECRET) {
+  console.error('[ADMIN] ADMIN_TOTP_SECRET ve ADMIN_SESSION_SECRET tanımlanmamış. Güvenli olmayan varsayılanlar kullanılıyor. Üretim öncesi tanımlayın.');
+}
 const effectiveAdminUsername = ADMIN_USERNAME || 'admin';
 const effectiveAdminPasswordHash = ADMIN_PASSWORD_HASH || bcrypt.hashSync('local-admin-password', 12);
-const effectiveAdminTotpSecret = ADMIN_TOTP_SECRET || 'JBSWY3DPEHPK3PXPJBSWY3DPEHPK3PXP';
-const adminSessionSecret = ADMIN_SESSION_SECRET || `${effectiveAdminPasswordHash}:${effectiveAdminTotpSecret}`;
+const effectiveAdminTotpSecret = ADMIN_TOTP_SECRET || generateTotpFallback();
+const adminSessionSecret = ADMIN_SESSION_SECRET || randomBytes(48).toString('base64url');
 const adminLoginAttempts = new Map();
 
 function sameSecret(candidate, expected) {
@@ -30,6 +33,12 @@ function sameSecret(candidate, expected) {
 
 function normalizeUsername(value) {
   return String(value || '').trim().normalize('NFKC').toLocaleLowerCase('en-US');
+}
+
+function generateTotpFallback() {
+  const secret = generateSecret();
+  console.error(`[ADMIN] ADMIN_TOTP_SECRET yok. Geçici secret: ${secret}`);
+  return secret;
 }
 
 router.post('/session', async (req, res) => {
