@@ -127,6 +127,5 @@ export default function ReportsScreen() {
 const baseStyles = StyleSheet.create({
   adherenceCard: { backgroundColor: colors.surface, borderRadius: borderRadius.card, padding: 20, marginBottom: spacing.lg },
   periodBtn: { flex: 1, paddingVertical: 8, alignItems: 'center', borderRadius: 8 },
-  statBox: { flex: 1, backgroundColor: colors.surface, borderRadius: borderRadius.card, padding: 16, marginBottom: spacing.md },
   statCard: { backgroundColor: colors.surface, borderRadius: borderRadius.card, padding: 14, borderLeftWidth: 3 },
 });

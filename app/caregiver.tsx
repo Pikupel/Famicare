@@ -37,7 +37,7 @@ export default function CaregiverScreen() {
       <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingTop: 56, paddingHorizontal: spacing.lg, paddingBottom: spacing.md, backgroundColor: colors.surface }}>
         <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.md }}>
           <View style={styles.avatar}><Text style={{ ...typography.h2, color: colors.primary }}>{(userName || 'Z')[0]}</Text></View>
-          <View><Text style={{ ...typography.caption, color: colors.textSecondary }}>Merhaba</Text><Text style={{ ...typography.h3, color: colors.text }}>{userName || 'Zeynep'}</Text></View>
+          <View><Text style={{ ...typography.caption, color: colors.textSecondary }}>Merhaba</Text><Text style={{ ...typography.h3, color: colors.text }}>{userName || ''}</Text></View>
         </View>
         <TouchableOpacity onPress={() => router.push('/notifications')} style={{ minHeight: 48, minWidth: 48, alignItems: 'center', justifyContent: 'center' }}><Text style={{ fontSize: 22 }}>🔔</Text></TouchableOpacity>
       </View>
@@ -105,5 +105,4 @@ const baseStyles = StyleSheet.create({
   badge: { paddingHorizontal: 8, paddingVertical: 2, borderRadius: 8 },
   actionBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', backgroundColor: colors.surface, padding: 14, borderRadius: borderRadius.card, borderWidth: 1.5, borderColor: colors.primary, minHeight: 48 },
   adherenceBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', backgroundColor: colors.surface, padding: 14, borderRadius: borderRadius.card, borderWidth: 1.5, borderColor: colors.primary, minHeight: 48, marginTop: spacing.md },
-  nav: { flexDirection: 'row', backgroundColor: colors.surface, paddingTop: 10, borderTopWidth: 1, borderTopColor: colors.border },
 });

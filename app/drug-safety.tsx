@@ -19,7 +19,7 @@ export default function DrugSafetyScreen() {
     if (!userId) { setLoading(false); return; }
     api.get<any[]>(`/medications/profile/${userId}`)
       .then(setMedications)
-      .catch(() => setMedications([]))
+      .catch(() => { setMedications([]); })
       .finally(() => setLoading(false));
   }, [userId]));
 

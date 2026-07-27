@@ -147,7 +147,7 @@ export default function AdherenceScreen() {
         )}
 
         <View style={{ paddingHorizontal: spacing.lg, marginBottom: spacing.xxl }}>
-          <Button title="PDF Rapor Oluştur" variant="outline" onPress={() => {}} />
+          <Button title="PDF Rapor Oluştur" variant="outline" onPress={() => router.push({ pathname: '/reports', params: { profileId: userId } })} />
         </View>
       </ScrollView>
     </View>

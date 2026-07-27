@@ -20,7 +20,6 @@ const defaultData = {
   pushDeliveries: [],
   authSessions: [],
   phoneVerifications: [],
-  phoneVerifications: [],
 };
 
 const adapter = new JSONFile(file);

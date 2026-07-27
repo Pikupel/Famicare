@@ -86,7 +86,7 @@ export default function HomeScreen() {
         <View style={styles.avatar}><Text style={{ ...typography.h2, color: colors.primary }}>{(userName || 'A')[0]}</Text></View>
         <View style={{ flex: 1 }}>
           <Text style={{ ...typography.caption, color: colors.textSecondary }}>İyi günler</Text>
-          <Text style={{ ...typography.h3, color: colors.text }}>{userName || 'Ayşe Hanım'}</Text>
+          <Text style={{ ...typography.h3, color: colors.text }}>{userName || ''}</Text>
         </View>
         <TouchableOpacity onPress={() => router.push('/notifications')}><Text style={{ fontSize: 22, color: colors.text }}>🔔</Text></TouchableOpacity>
       </View>
@@ -147,7 +147,4 @@ const baseStyles = StyleSheet.create({
   avatar: { width: 48, height: 48, borderRadius: 24, backgroundColor: colors.primaryLight + '30', alignItems: 'center', justifyContent: 'center', marginRight: spacing.md },
   card: { backgroundColor: colors.surface, borderRadius: borderRadius.card, padding: 20, marginHorizontal: spacing.lg },
   medRow: { flexDirection: 'row', alignItems: 'center', paddingVertical: 14, borderBottomWidth: 1, borderBottomColor: colors.border },
-  done: { width: 32, height: 32, borderRadius: 16, backgroundColor: colors.secondary, alignItems: 'center', justifyContent: 'center' },
-
-
 });
