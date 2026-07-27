@@ -41,7 +41,8 @@ Production build numarası EAS tarafından otomatik artırılır.
 - Data Safety formu doldurulmalı
 - Hesap silme URL’si girilmeli
 - Gizlilik politikası URL’si girilmeli
-- `SCHEDULE_EXACT_ALARM` kullanım amacı ilaç hatırlatmaları olarak açıklanmalı
+- `SCHEDULE_EXACT_ALARM` kullanım amacı ilaç hatırlatmaları olarak açıklanmalı:
+  > "Famicare, kullanıcıların belirlediği ilaç saatlerinde (örn. 09:00, 14:00, 21:00) tam zamanlı hatırlatma bildirimleri göndermek için SCHEDULE_EXACT_ALARM iznini kullanır. Bu izin olmadan ilaç hatırlatmaları gecikebilir ve kullanıcı sağlığı risk altına girebilir."
 - İç test ve kapalı test tamamlanmalı
 - Production için AAB kullanılmalı
 

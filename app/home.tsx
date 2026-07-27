@@ -137,6 +137,15 @@ export default function HomeScreen() {
         </View>
       </ScrollView>
 
+      <View style={{ flexDirection: 'row', paddingHorizontal: spacing.lg, paddingBottom: spacing.md, gap: spacing.sm }}>
+        <TouchableOpacity style={{ flex: 1, backgroundColor: colors.surface, borderRadius: borderRadius.card, padding: 12, alignItems: 'center', minHeight: 48, justifyContent: 'center' }} onPress={() => router.push('/adherence')}>
+          <Text style={{ ...typography.small, color: colors.primary, fontWeight: '600' }}>📊 Uyum Geçmişi</Text>
+        </TouchableOpacity>
+        <TouchableOpacity style={{ flex: 1, backgroundColor: colors.surface, borderRadius: borderRadius.card, padding: 12, alignItems: 'center', minHeight: 48, justifyContent: 'center' }} onPress={() => router.push('/stock')}>
+          <Text style={{ ...typography.small, color: colors.primary, fontWeight: '600' }}>📦 Stok Takibi</Text>
+        </TouchableOpacity>
+      </View>
+
       <SOSButton />
       <BottomNav items={NAV} activeIndex={0} />
     </View>

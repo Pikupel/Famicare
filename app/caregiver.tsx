@@ -87,6 +87,10 @@ export default function CaregiverScreen() {
           <Text style={{ fontSize: 18, marginRight: spacing.sm }}>🔍</Text>
           <Text style={{ ...typography.button, color: colors.primary }}>Gözden Geçir</Text>
         </TouchableOpacity>
+        <TouchableOpacity style={[styles.actionBtn, { marginTop: spacing.md }]} onPress={() => router.push('/adherence')}>
+          <Text style={{ fontSize: 18, marginRight: spacing.sm }}>📊</Text>
+          <Text style={{ ...typography.button, color: colors.primary }}>Uyum Geçmişi</Text>
+        </TouchableOpacity>
         <TouchableOpacity style={[styles.actionBtn, { marginTop: spacing.md, marginBottom: spacing.xxl }]} onPress={() => router.push('/add-profile')}>
           <Text style={{ fontSize: 18, marginRight: spacing.sm }}>👤</Text>
           <Text style={{ ...typography.button, color: colors.primary }}>Yeni Yakın Ekle</Text>

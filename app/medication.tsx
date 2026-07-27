@@ -62,6 +62,14 @@ export default function MedicationScreen() {
           <Text style={{ fontSize: 18, marginRight: spacing.sm }}>➕</Text>
           <Text style={{ ...typography.button, color: colors.primary }}>İlaç Ekle</Text>
         </TouchableOpacity>
+        <View style={{ flexDirection: 'row', marginHorizontal: spacing.lg, marginTop: spacing.md, gap: spacing.sm }}>
+          <TouchableOpacity style={[styles.addBtn, { flex: 1, marginHorizontal: 0, marginTop: 0, borderColor: colors.warning, borderStyle: 'solid' }]} onPress={() => router.push('/drug-safety')}>
+            <Text style={{ ...typography.small, color: colors.warning, fontWeight: '600' }}>🔬 İlaç Bilgileri</Text>
+          </TouchableOpacity>
+          <TouchableOpacity style={[styles.addBtn, { flex: 1, marginHorizontal: 0, marginTop: 0 }]} onPress={() => router.push('/stock')}>
+            <Text style={{ ...typography.small, color: colors.primary, fontWeight: '600' }}>📦 Stok Takibi</Text>
+          </TouchableOpacity>
+        </View>
         {medications.length === 0 ? (
           <EmptyState icon="💊" title="Henüz ilaç eklenmemiş" description="Yukarıdaki butonu kullanarak ilaç ekleyebilirsiniz." />
         ) : medications.map((m: any) => (

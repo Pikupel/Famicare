@@ -8,8 +8,7 @@ import { spacing, borderRadius, shadow } from '../src/theme/spacing';
 import { api } from '../src/services/api';
 import { useAuthStore } from '../src/stores/useAuthStore';
 import { useThemedStyles } from '../src/theme/ThemeProvider';
-
-const MONTHS = ['Ocak', 'Şubat', 'Mart', 'Nisan', 'Mayıs', 'Haziran', 'Temmuz', 'Ağustos', 'Eylül', 'Ekim', 'Kasım', 'Aralık'];
+import { MONTHS, WEEKDAYS, getCalendarOffset } from '../src/utils/calendar';
 
 function toLocalDate(isoDate: string) {
   if (!isoDate) return { d: '', m: '', y: '' };
@@ -67,11 +66,11 @@ export default function AppointmentsScreen() {
         </View>
 
         <View style={{ flexDirection: 'row', marginBottom: spacing.sm }}>
-          {['Pzt','Sal','Çar','Per','Cum','Cmt','Paz'].map(d => <View key={d} style={{ flex: 1, alignItems: 'center' }}><Text style={{ ...typography.small, color: colors.textLight }}>{d}</Text></View>)}
+            {WEEKDAYS.map(d => <View key={d} style={{ flex: 1, alignItems: 'center' }}><Text style={{ ...typography.small, color: colors.textLight }}>{d}</Text></View>)}
         </View>
 
         <View style={{ flexDirection: 'row', flexWrap: 'wrap' }}>
-          {Array.from({ length: (new Date(year, month, 1).getDay() + 6) % 7 }).map((_, i) => <View key={`e-${i}`} style={{ width: '14.28%', aspectRatio: 1 }} />)}
+          {Array.from({ length: getCalendarOffset(year, month) }).map((_, i) => <View key={`e-${i}`} style={{ width: '14.28%', aspectRatio: 1 }} />)}
           {days.map(day => {
             const hasAppt = appointments.some((a: any) => { const { d, m: mo } = toLocalDate(a.date); return parseInt(d) === day && parseInt(mo) === month + 1; });
             return (

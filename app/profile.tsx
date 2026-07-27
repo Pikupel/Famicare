@@ -157,6 +157,11 @@ export default function ProfileScreen() {
                 <Text style={{ ...typography.body, color: colors.text, flex: 1 }}>Sağlık Günlüğüm</Text>
                 <Text style={{ fontSize: 20, color: colors.textLight }}>›</Text>
               </TouchableOpacity>
+              <TouchableOpacity style={styles.action} onPress={() => router.push('/emergency-contacts')}>
+                <Text style={{ fontSize: 18, marginRight: spacing.md }}>📞</Text>
+                <Text style={{ ...typography.body, color: colors.text, flex: 1 }}>Acil Kişiler</Text>
+                <Text style={{ fontSize: 20, color: colors.textLight }}>›</Text>
+              </TouchableOpacity>
               <TouchableOpacity style={[styles.action, { borderBottomWidth: 0 }]} onPress={() => router.push('/invite')}>
                 <Text style={{ fontSize: 18, marginRight: spacing.md }}>🔗</Text>
                 <Text style={{ ...typography.body, color: colors.text, flex: 1 }}>Yakınına Bağlan</Text>

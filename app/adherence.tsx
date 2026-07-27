@@ -9,9 +9,7 @@ import { useAuthStore } from '../src/stores/useAuthStore';
 import { Button } from '../src/components/Button';
 import { useThemedStyles } from '../src/theme/ThemeProvider';
 import { localDate } from '../src/services/date';
-
-const MONTHS = ['Ocak', 'Şubat', 'Mart', 'Nisan', 'Mayıs', 'Haziran', 'Temmuz', 'Ağustos', 'Eylül', 'Ekim', 'Kasım', 'Aralık'];
-const DAYS = Array.from({ length: 31 }, (_, i) => i + 1);
+import { MONTHS, WEEKDAYS, getCalendarOffset } from '../src/utils/calendar';
 
 export default function AdherenceScreen() {
   const styles = useThemedStyles(baseStyles);
@@ -96,11 +94,11 @@ export default function AdherenceScreen() {
             <TouchableOpacity onPress={() => setMonth(m => Math.min(11, m + 1))} style={{ minWidth: 44, minHeight: 44, alignItems: 'center', justifyContent: 'center' }}><Text style={{ fontSize: 22, color: colors.primary }}>›</Text></TouchableOpacity>
           </View>
           <View style={{ flexDirection: 'row', marginBottom: spacing.sm }}>
-            {['Pzt','Sal','Çar','Per','Cum','Cmt','Paz'].map(d => <View key={d} style={{ flex: 1, alignItems: 'center' }}><Text style={{ ...typography.small, color: colors.textLight }}>{d}</Text></View>)}
+            {WEEKDAYS.map(d => <View key={d} style={{ flex: 1, alignItems: 'center' }}><Text style={{ ...typography.small, color: colors.textLight }}>{d}</Text></View>)}
           </View>
           <View style={{ flexDirection: 'row', flexWrap: 'wrap' }}>
-            {Array.from({ length: (new Date(year, month, 1).getDay() + 6) % 7 }).map((_, i) => <View key={`e-${i}`} style={{ width: '14.28%', aspectRatio: 1 }} />)}
-            {DAYS.slice(0, totalDays).map(day => {
+            {Array.from({ length: getCalendarOffset(year, month) }).map((_, i) => <View key={`e-${i}`} style={{ width: '14.28%', aspectRatio: 1 }} />)}
+            {Array.from({ length: totalDays }, (_, i) => i + 1).map(day => {
               const color = getDayColor(day);
               return (
                 <TouchableOpacity key={day} style={[styles.day, { borderColor: selectedDay === day ? colors.primary : 'transparent', borderWidth: selectedDay === day ? 2 : 0 }]} onPress={() => setSelectedDay(day === selectedDay ? null : day)}>

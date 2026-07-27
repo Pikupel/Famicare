@@ -12,8 +12,8 @@ import * as Sharing from 'expo-sharing';
 import { BASE_URL } from '../src/services/api';
 import { localDate, addCalendarDays } from '../src/services/date';
 import { useThemedStyles } from '../src/theme/ThemeProvider';
+import { WEEKDAYS } from '../src/utils/calendar';
 
-const DAYS = ['Pzt', 'Sal', 'Çar', 'Per', 'Cum', 'Cmt', 'Paz'];
 export default function ReportsScreen() {
   const styles = useThemedStyles(baseStyles);
   const router = useRouter();
@@ -50,7 +50,7 @@ export default function ReportsScreen() {
     const key = addCalendarDays(today, -(chartDays - offset - 1));
     const date = new Date(`${key}T12:00:00`);
     const taken = logs.filter(log => log.date === key && ['taken', 'caregiver_marked'].includes(log.status)).length;
-    return { label: period === 'weekly' ? DAYS[(date.getDay() + 6) % 7] : String(date.getDate()), value: totalDoses ? Math.min(100, Math.round(taken / totalDoses * 100)) : 0 };
+    return { label: period === 'weekly' ? WEEKDAYS[(date.getDay() + 6) % 7] : String(date.getDate()), value: totalDoses ? Math.min(100, Math.round(taken / totalDoses * 100)) : 0 };
   });
 
   const sharePdf = async () => {
