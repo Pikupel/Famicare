@@ -2,7 +2,7 @@
   "expo": {
     "name": "Famicare",
     "slug": "famicare",
-    "version": "1.0.0",
+    "version": "1.0.1",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "automatic",
@@ -29,10 +29,28 @@
       "expo-router",
       "expo-secure-store",
       [
+        "expo-build-properties",
+        {
+          "android": {
+            "compileSdkVersion": 35,
+            "targetSdkVersion": 35
+          },
+          "ios": {
+            "deploymentTarget": "16.0"
+          }
+        }
+      ],
+      [
         "expo-notifications",
         {
           "defaultChannel": "medication",
           "color": "#2563EB"
+        }
+      ],
+      [
+        "expo-updates",
+        {
+          "username": "Pikupel"
         }
       ],
       "expo-font",
@@ -53,6 +71,10 @@
       "eas": {
         "projectId": "5f72faa7-1b1f-4e83-814b-d87d2cd5956c"
       }
+    },
+    "updates": {
+      "fallbackToCacheTimeout": 0,
+      "url": "https://u.expo.dev/5f72faa7-1b1f-4e83-814b-d87d2cd5956c"
     }
   }
 }
