@@ -1,12 +1,13 @@
 import jwt from 'jsonwebtoken';
 import { db } from '../db.js';
+import { randomBytes } from 'crypto';
 
 const JWT_SECRET = process.env.JWT_SECRET;
 
 if (!JWT_SECRET && process.env.NODE_ENV === 'production') {
   throw new Error('JWT_SECRET üretim ortamında zorunludur');
 }
-const effectiveSecret = JWT_SECRET || 'famicare-local-development-only';
+const effectiveSecret = JWT_SECRET || randomBytes(48).toString('base64url');
 
 export function generateToken(user, sessionId = null) {
   return jwt.sign(

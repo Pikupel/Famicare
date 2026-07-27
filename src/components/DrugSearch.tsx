@@ -1,4 +1,4 @@
-import { useState, useRef } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { View, Text, TextInput, TouchableOpacity, ScrollView, StyleSheet, ActivityIndicator } from 'react-native';
 import { api } from '../services/api';
 import { colors } from '../theme/colors';
@@ -29,6 +29,7 @@ export function DrugSearch({ onSelect, placeholder }: DrugSearchProps) {
   const [results, setResults] = useState<DrugResult[]>([]);
   const [loading, setLoading] = useState(false);
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  useEffect(() => () => { if (timer.current) clearTimeout(timer.current); }, []);
 
   const search = async (q: string) => {
     setQuery(q);

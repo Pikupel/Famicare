@@ -60,13 +60,7 @@ router.post('/session', async (req, res) => {
     ? await verifyTotp({ secret: effectiveAdminTotpSecret, token: req.body.totp })
     : { valid: false };
   if (!usernameValid || !passwordValid || !totpResult.valid) {
-    console.warn('[ADMIN AUTH] Login rejected', {
-      usernameValid,
-      passwordValid,
-      totpValid: Boolean(totpResult.valid),
-      receivedUsernameLength: receivedUsername.length,
-      configuredUsernameLength: configuredUsername.length,
-    });
+    console.warn('[ADMIN AUTH] Login rejected');
     const failures = (attempt?.failures || 0) + 1;
     adminLoginAttempts.set(identifier, failures >= 5
       ? { failures: 0, blockedUntil: Date.now() + 15 * 60 * 1000 }
