@@ -22,6 +22,7 @@ export default function AddMedicationScreen() {
   const [purpose, setPurpose] = useState('');
   const [endDate, setEndDate] = useState('');
   const [stockTotal, setStockTotal] = useState('');
+  const [drugRefId, setDrugRefId] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
 
   const addTime = () => setTimes([...times, '09:00']);
@@ -37,7 +38,7 @@ export default function AddMedicationScreen() {
     setSaving(true);
     const targetProfileId = profileId || userId || 'default';
     try {
-      await api.post('/medications', { profileId: targetProfileId, name, dosage, instructions: instruction, times, endDate, purpose, stockTotal: stockTotal ? Number(stockTotal) : undefined });
+      await api.post('/medications', { profileId: targetProfileId, name, dosage, instructions: instruction, times, endDate, purpose, stockTotal: stockTotal ? Number(stockTotal) : undefined, drugRefId });
       Alert.alert('Başarılı', 'İlaç eklendi');
       router.back();
     } catch (e: any) { Alert.alert('Hata', e.message); }
@@ -52,8 +53,8 @@ export default function AddMedicationScreen() {
       </View>
       <ScrollView style={{ flex: 1, padding: spacing.lg }} keyboardShouldPersistTaps="handled">
         <Text style={styles.label}>İlaç Adı</Text>
-        <DrugSearch onSelect={(drug) => { setName(drug.ilac_adi); if (drug.recete_turu === 'Mor') Alert.alert('🔮 Mor Reçete', 'Bu ilaç mor reçeteye tabidir. Kullanım için doktor izni gereklidir.'); }} />
-        {!name && <TextInput style={styles.input} value={name} onChangeText={setName} placeholder="Veya manuel girin..." />}
+        <DrugSearch onSelect={(drug) => { setName(drug.ilac_adi); setDrugRefId(drug.barkod); if (drug.recete_turu === 'Mor') Alert.alert('🔮 Mor Reçete', 'Bu ilaç mor reçeteye tabidir. Kullanım için doktor izni gereklidir.'); }} />
+        <TextInput style={styles.input} value={name} onChangeText={(value) => { setName(value); setDrugRefId(null); }} placeholder="Seçim yapın veya manuel girin..." />
         <Text style={styles.label}>Doz</Text>
         <TextInput style={styles.input} value={dosage} onChangeText={setDosage} placeholder="1 Tablet" />
         <Text style={styles.label}>Kullanım Şekli</Text>

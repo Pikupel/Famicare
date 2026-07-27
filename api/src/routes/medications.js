@@ -14,7 +14,7 @@ router.get('/profile/:profileId', (req, res) => {
 
 router.post('/', async (req, res) => {
   if (!req.body.profileId || !req.body.name) return res.status(400).json({ error: 'Profil ID ve ilaç adı gerekli' });
-  const { profileId, name, dosage, instructions, times, endDate, stockTotal, purpose } = req.body;
+  const { profileId, name, dosage, instructions, times, endDate, stockTotal, purpose, drugRefId } = req.body;
   if (!requireProfileAccess(req, res, profileId)) return;
   if (!Array.isArray(times) || !times.length || times.some(t => !/^(?:[01]\d|2[0-3]):[0-5]\d$/.test(t))) {
     return res.status(400).json({ error: 'En az bir geçerli ilaç saati gerekli' });
@@ -23,6 +23,7 @@ router.post('/', async (req, res) => {
     id: uuid(), profileId, name, dosage: dosage || '', instructions: instructions || '',
     times: times || ['09:00'], repeatInterval: 15, endDate: endDate || '',
     purpose: purpose || '',
+    drugRefId: drugRefId || null,
     stockTotal: stockTotal ? Number(stockTotal) : null,
     stockRefillDate: null,
     isActive: true, createdAt: new Date().toISOString(),

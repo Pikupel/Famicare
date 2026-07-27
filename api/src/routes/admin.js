@@ -4,6 +4,7 @@ import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
 import { timingSafeEqual } from 'crypto';
 import { verify as verifyTotp } from 'otplib';
+import { createTitckPreview, consumeTitckPreview } from '../services/titck-import.js';
 
 const router = Router();
 const ADMIN_USERNAME = process.env.ADMIN_USERNAME;
@@ -135,34 +136,45 @@ router.get('/drugs/search', (req, res) => {
     .slice(0, 50)
     .map(drug => ({
       ilac_adi: drug.ilac_adi, barkod: drug.barkod,
-      atc_kodu: drug.atc_kodu, durum: drug.durum,
+      atc_kodu: drug.atc_kodu, atc_adi: drug.atc_adi, durum: drug.durum,
+      ingredientStatus: drug.ingredientStatus || 'unmapped',
     })));
 });
 
-// Force import drugs from Excel (manual trigger)
-router.post('/import-drugs', async (req, res) => {
-  res.status(410).json({ error: 'Güvenlik nedeniyle Excel içe aktarma yalnızca kontrollü build işlemi sırasında çalıştırılabilir.' });
+router.post('/titck/preview', async (req, res) => {
+  try {
+    const preview = await createTitckPreview(req.body?.sourceUrl, db.data.drugReferences || []);
+    await recordAudit(req, 'drugs.titck-preview', 'drugReferences', null, {
+      sourceUrl: preview.sourceUrl, checksum: preview.checksum, total: preview.total,
+    });
+    res.json(preview);
+  } catch (error) {
+    res.status(400).json({ error: error.message || 'TİTCK dosyası önizlenemedi' });
+  }
 });
 
-// Run RxNav matching
-router.post('/match-rxnav', async (req, res) => {
-  let matched = 0, failed = 0;
-  const drugs = (db.data.drugReferences || []).filter(d => d.durum === 'aktif' && !d.rxcui);
-  for (const drug of drugs.slice(0, 50)) { // Limit to 50 per request
-    try {
-      const resp = await fetch(`https://rxnav.nlm.nih.gov/REST/rxcui.json?name=${encodeURIComponent(drug.atc_adi)}`);
-      const data = await resp.json();
-      if (data.idGroup?.rxnormId?.[0]) {
-        drug.rxcui = data.idGroup.rxnormId[0];
-        matched++;
-      } else {
-        failed++;
-      }
-    } catch { failed++; }
+router.post('/titck/apply', async (req, res) => {
+  if (!requireConfirmation(req, res, 'TİTCK LİSTESİNİ GÜNCELLE')) return;
+  try {
+    const preview = consumeTitckPreview(req.body?.previewToken);
+    const backup = {
+      id: uuid(), createdAt: new Date().toISOString(),
+      data: { drugReferences: structuredClone(db.data.drugReferences || []), lastImportDate: db.data.lastImportDate },
+    };
+    db.data.adminBackups = [backup, ...(db.data.adminBackups || [])].slice(0, 3);
+    db.data.drugReferences = preview.products;
+    db.data.lastImportDate = new Date().toISOString();
+    db.data.lastTitckImport = {
+      sourceUrl: preview.sourceUrl, checksum: preview.checksum, importedAt: db.data.lastImportDate,
+    };
+    await db.write();
+    await recordAudit(req, 'drugs.titck-apply', 'drugReferences', null, {
+      sourceUrl: preview.sourceUrl, checksum: preview.checksum, ...preview.summary,
+    });
+    res.json({ success: true, ...preview.summary, importedAt: db.data.lastImportDate });
+  } catch (error) {
+    res.status(400).json({ error: error.message || 'TİTCK listesi uygulanamadı' });
   }
-  await db.write();
-  await recordAudit(req, 'drugs.match-rxnav', 'drugReferences', null, { matched, failed });
-  res.json({ matched, failed, remaining: drugs.length - matched - failed });
 });
 
 // List all profiles

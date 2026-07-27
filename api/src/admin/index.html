@@ -56,8 +56,6 @@
           <h2>Bakım işlemleri</h2>
           <div class="row">
             <button id="refreshBtn">Verileri yenile</button>
-            <button id="rxNavBtn" class="secondary">50 ilacı RxNav ile eşleştir</button>
-            <button disabled title="Yalnızca kontrollü build işlemi sırasında kullanılabilir">TİTCK içe aktarma devre dışı</button>
           </div>
         </div>
       </section>
@@ -72,10 +70,21 @@
 
       <section id="drugs" class="tab-panel">
         <div class="card">
+          <h2>TİTCK listesini güncelle</h2>
+          <p class="muted">TİTCK sayfasındaki en güncel XLSX bağlantısını yapıştırın. Önizleme yapılmadan hiçbir kayıt değiştirilmez.</p>
+          <label for="titckUrl">Resmî TİTCK XLSX bağlantısı</label>
+          <input id="titckUrl" type="url" placeholder="https://titck.gov.tr/...xlsx" style="width:100%;margin:8px 0 12px">
+          <div class="row">
+            <button id="titckPreviewBtn">Dosyayı doğrula ve önizle</button>
+            <button id="titckApplyBtn" class="warning hidden">Onayla ve içe aktar</button>
+          </div>
+          <p id="titckPreviewResult" class="muted"></p>
+        </div>
+        <div class="card">
           <h2>İlaç kataloğu</h2>
           <label for="drugSearch">İlaç adı</label>
           <input id="drugSearch" type="search" placeholder="En az 2 karakter" style="width:100%;margin:8px 0 12px">
-          <div class="table-wrap"><table><thead><tr><th>İlaç</th><th>Barkod</th><th>ATC</th><th>Durum</th></tr></thead><tbody id="drugsBody"></tbody></table></div>
+          <div class="table-wrap"><table><thead><tr><th>İlaç</th><th>Barkod</th><th>ATC</th><th>ATC adı</th><th>İçerik durumu</th><th>Ürün durumu</th></tr></thead><tbody id="drugsBody"></tbody></table></div>
         </div>
       </section>
 
@@ -253,16 +262,45 @@
         const drugs = await request(`/admin/drugs/search?q=${encodeURIComponent(query)}`);
         for (const drug of drugs) {
           const row = document.createElement('tr');
-          cell(row, drug.ilac_adi); cell(row, drug.barkod); cell(row, drug.atc_kodu); cell(row, drug.durum);
+          cell(row, drug.ilac_adi); cell(row, drug.barkod); cell(row, drug.atc_kodu); cell(row, drug.atc_adi);
+          cell(row, drug.ingredientStatus === 'verified' ? 'Doğrulandı' : drug.ingredientStatus === 'atc_candidate' ? 'ATC adayı' : 'Eşleşmedi');
+          cell(row, drug.durum);
           body.appendChild(row);
         }
       } catch (error) { toast(error.message, true); }
     }
 
-    async function matchRxNav() {
-      if (!confirm('En fazla 50 ilaç RxNav ile eşleştirilsin mi?')) return;
-      try { const result = await request('/admin/match-rxnav', { method:'POST' }); toast(`Eşleşen ${result.matched}, başarısız ${result.failed}, kalan ${result.remaining}`); await loadDashboard(); }
-      catch (error) { toast(error.message, true); }
+    let titckPreviewToken = '';
+    async function previewTitck() {
+      const sourceUrl = byId('titckUrl').value.trim();
+      if (!sourceUrl) return toast('TİTCK XLSX bağlantısını girin', true);
+      byId('titckPreviewBtn').disabled = true;
+      try {
+        const result = await request('/admin/titck/preview', { method:'POST', body:JSON.stringify({ sourceUrl }) });
+        titckPreviewToken = result.token;
+        byId('titckPreviewResult').textContent = `Toplam ${result.total}: ${result.active} aktif, ${result.passive} pasif · ${result.added} yeni, ${result.updated} güncellenecek, ${result.removed} kaynakta bulunmuyor. Önizleme 15 dakika geçerlidir.`;
+        byId('titckApplyBtn').classList.remove('hidden');
+      } catch (error) {
+        titckPreviewToken = '';
+        byId('titckApplyBtn').classList.add('hidden');
+        toast(error.message, true);
+      } finally { byId('titckPreviewBtn').disabled = false; }
+    }
+
+    async function applyTitck() {
+      if (!titckPreviewToken) return;
+      const phrase = prompt('İçe aktarmayı onaylamak için TİTCK LİSTESİNİ GÜNCELLE yazın:');
+      if (phrase !== 'TİTCK LİSTESİNİ GÜNCELLE') return;
+      try {
+        const result = await request('/admin/titck/apply', {
+          method:'POST', body:JSON.stringify({ previewToken:titckPreviewToken, confirmation:phrase }),
+        });
+        titckPreviewToken = '';
+        byId('titckApplyBtn').classList.add('hidden');
+        byId('titckPreviewResult').textContent = `${result.total} ürün başarıyla içe aktarıldı.`;
+        toast('TİTCK listesi güncellendi ve önceki katalog yedeklendi');
+        await loadDashboard();
+      } catch (error) { toast(error.message, true); }
     }
 
     async function loadDatabase() {
@@ -309,7 +347,8 @@
     byId('loginForm').addEventListener('submit', login);
     byId('logoutBtn').addEventListener('click', logout);
     byId('refreshBtn').addEventListener('click', loadDashboard);
-    byId('rxNavBtn').addEventListener('click', matchRxNav);
+    byId('titckPreviewBtn').addEventListener('click', previewTitck);
+    byId('titckApplyBtn').addEventListener('click', applyTitck);
     byId('drugSearch').addEventListener('input', scheduleDrugSearch);
     byId('clearBtn').addEventListener('click', clearAll);
     document.querySelectorAll('.tab').forEach(button => button.addEventListener('click', () => switchTab(button.dataset.tab, button)));

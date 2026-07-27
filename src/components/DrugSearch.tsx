@@ -11,6 +11,10 @@ interface DrugResult {
   barkod: string;
   recete_turu: string;
   firma_adi: string;
+  atc_kodu?: string;
+  atc_adi?: string;
+  ingredientStatus?: 'verified' | 'atc_candidate' | 'unmapped';
+  ingredients?: Array<{ name: string; amount?: string; unit?: string }>;
 }
 
 interface DrugSearchProps {
@@ -66,6 +70,9 @@ export function DrugSearch({ onSelect, placeholder }: DrugSearchProps) {
                 {item.recete_turu === 'Kırmızı' && <Text style={styles.kirmiziBadge}>🔴 Kırmızı Reçete</Text>}
                 <Text style={{ ...typography.small, color: colors.textLight }}>{item.firma_adi}</Text>
               </View>
+              <Text style={{ ...typography.small, color: colors.textLight, marginTop: 3 }}>
+                {item.atc_adi ? `ATC: ${item.atc_adi}` : 'Etkin madde bilgisi henüz eşleştirilmedi'}
+              </Text>
             </TouchableOpacity>
           ))}
         </ScrollView>
