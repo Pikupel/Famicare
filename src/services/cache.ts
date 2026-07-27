@@ -20,9 +20,3 @@ export async function getCachedData<T>(key: string): Promise<{ data: T; age: num
     return null;
   }
 }
-
-export async function clearCache() {
-  const keys = await AsyncStorage.getAllKeys();
-  const cacheKeys = keys.filter(k => k.startsWith(CACHE_PREFIX));
-  if (cacheKeys.length > 0) await AsyncStorage.multiRemove(cacheKeys);
-}

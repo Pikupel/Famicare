@@ -53,6 +53,7 @@ export default function AdherenceScreen() {
 
   const totalDays = new Date(year, month + 1, 0).getDate();
   const takenThisMonth = logs.filter(l => {
+    if (!l.date) return false;
     const [y, m] = l.date.split('-');
     return parseInt(m) === month + 1 && parseInt(y) === year && ['taken', 'caregiver_marked'].includes(l.status);
   }).length;
