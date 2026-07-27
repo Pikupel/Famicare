@@ -34,28 +34,11 @@ export async function setupNotifications() {
   }
 }
 
-export async function sendTestNotification() {
-  try {
-    await Notifications.scheduleNotificationAsync({
-      content: {
-        title: '🔔 Test Bildirimi',
-        body: 'Famicare push notification çalışıyor! ✅',
-        sound: 'default',
-        priority: Notifications.AndroidNotificationPriority.HIGH,
-      },
-      trigger: { type: 'date', date: new Date(Date.now() + 2000) } as any,
-    });
-    return true;
-  } catch {
-    return false;
-  }
-}
-
 export async function scheduleMedicationReminder(medId: string, name: string, timeString: string) {
   const [h, m] = timeString.split(':').map(Number);
   if (!Number.isInteger(h) || !Number.isInteger(m)) return;
   const identifier = doseNotificationId(medId, timeString);
-  try { await Notifications.cancelScheduledNotificationAsync(identifier); } catch {}
+  try { await Notifications.cancelScheduledNotificationAsync(identifier); } catch { /* non-critical cleanup */ }
 
   try {
     await Notifications.scheduleNotificationAsync({
@@ -74,7 +57,9 @@ export async function scheduleMedicationReminder(medId: string, name: string, ti
         channelId: 'medication',
       },
     });
-  } catch {}
+    } catch {
+      console.warn('[Notifications] scheduleMedicationReminder failed for', medId, timeString);
+    }
 }
 
 export async function syncMedicationReminders(medications: Array<{ id: string; name: string; times?: string[]; isActive?: boolean }>) {

@@ -18,7 +18,7 @@ async function refreshAccessToken(): Promise<boolean> {
     const tokens = await response.json();
     useAuthStore.getState().updateTokens(tokens.token, tokens.refreshToken);
     return true;
-  })().catch(() => false).finally(() => { refreshPromise = null; });
+  })().catch((e) => { console.warn('[api] Token refresh failed:', e?.message); return false; }).finally(() => { refreshPromise = null; });
   return refreshPromise;
 }
 

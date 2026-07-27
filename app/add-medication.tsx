@@ -97,7 +97,6 @@ export default function AddMedicationScreen() {
   );
 }
 const baseStyles = StyleSheet.create({
-  scanner: { flexDirection: 'row', alignItems: 'center', backgroundColor: colors.surface, borderRadius: borderRadius.card, padding: 20, marginBottom: spacing.lg, borderWidth: 2, borderColor: colors.primary, borderStyle: 'dashed' },
   label: { ...typography.body, color: colors.text, marginBottom: spacing.xs, marginTop: spacing.md },
   input: { backgroundColor: colors.surface, borderRadius: borderRadius.input, paddingHorizontal: 16, paddingVertical: 14, fontSize: 16, color: colors.text, borderWidth: 1, borderColor: colors.border, marginBottom: spacing.sm },
   option: { flex: 1, paddingVertical: 14, borderRadius: borderRadius.input, alignItems: 'center', backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border },

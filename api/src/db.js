@@ -223,7 +223,7 @@ async function deleteRelationalData({ userIds = [], profileIds = [], clearAll = 
     }
     await client.query('COMMIT');
   } catch (error) {
-    await client.query('ROLLBACK').catch(() => {});
+    await client.query('ROLLBACK').catch((e) => console.error('db: ROLLBACK failed', e.message));
     throw error;
   } finally {
     client.release();

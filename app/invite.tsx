@@ -21,7 +21,7 @@ export default function InviteScreen() {
 
   useFocusEffect(useCallback(() => {
     if (!isCaregiver) {
-      api.get<any>('/profiles/my-link').then(d => setLinked(d)).catch(() => {}).finally(() => setLoading(false));
+      api.get<any>('/profiles/my-link').then(d => setLinked(d)).catch(() => { setLoading(false); }).finally(() => setLoading(false));
     } else {
       setLoading(false);
     }

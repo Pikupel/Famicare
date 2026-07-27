@@ -42,7 +42,7 @@ export default function ProfileScreen() {
         const latest = records.sort((a, b) => new Date(b.measuredAt).getTime() - new Date(a.measuredAt).getTime())[0];
         const value = latest?.valueData?.weight;
         if (value !== undefined && value !== null && value !== '') setLatestWeight(`${value} kg`);
-      }).catch(() => {});
+      }).catch(() => { setLatestWeight('Eklenmedi'); });
     }
   }, [userId]);
   const NAV = role === 'caregiver' ? [

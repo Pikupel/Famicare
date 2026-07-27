@@ -20,7 +20,7 @@ if (!ADMIN_TOTP_SECRET && !ADMIN_SESSION_SECRET) {
   console.error('[ADMIN] ADMIN_TOTP_SECRET ve ADMIN_SESSION_SECRET tanımlanmamış. Güvenli olmayan varsayılanlar kullanılıyor. Üretim öncesi tanımlayın.');
 }
 const effectiveAdminUsername = ADMIN_USERNAME || 'admin';
-const effectiveAdminPasswordHash = ADMIN_PASSWORD_HASH || bcrypt.hashSync('local-admin-password', 12);
+const effectiveAdminPasswordHash = ADMIN_PASSWORD_HASH || (() => { throw new Error('ADMIN_PASSWORD_HASH tanımlanmamış'); })();
 const effectiveAdminTotpSecret = ADMIN_TOTP_SECRET || generateTotpFallback();
 const adminSessionSecret = ADMIN_SESSION_SECRET || randomBytes(48).toString('base64url');
 const adminLoginAttempts = new Map();
@@ -37,7 +37,7 @@ function normalizeUsername(value) {
 
 function generateTotpFallback() {
   const secret = generateSecret();
-  console.error(`[ADMIN] ADMIN_TOTP_SECRET yok. Geçici secret: ${secret}`);
+  console.error('[ADMIN] ADMIN_TOTP_SECRET tanımlanmamış. Geçici secret üretildi (yeniden başlatmada değişir).');
   return secret;
 }
 
