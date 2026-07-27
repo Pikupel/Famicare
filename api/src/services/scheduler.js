@@ -3,11 +3,15 @@ import { sendPush } from './push.js';
 
 const CHECK_INTERVAL = 5 * 60 * 1000;
 let intervalId = null;
+let isRunning = false;
 
 export function startScheduler() {
   if (intervalId) return;
   checkScheduledEvents().catch(error => console.error('Scheduler:', error.message));
-  intervalId = setInterval(() => checkScheduledEvents().catch(error => console.error('Scheduler:', error.message)), CHECK_INTERVAL);
+  intervalId = setInterval(() => {
+    if (isRunning) return;
+    checkScheduledEvents().catch(error => console.error('Scheduler:', error.message));
+  }, CHECK_INTERVAL);
 }
 
 export function stopScheduler() {
@@ -37,6 +41,8 @@ function isMedicationActive(medication, date) {
 }
 
 async function checkScheduledEvents() {
+  if (isRunning) return;
+  isRunning = true;
   const now = new Date();
 
   for (const medication of db.data.medications) {
@@ -89,8 +95,12 @@ async function checkScheduledEvents() {
     }
   }
 
-  await checkAppointmentReminders(now);
-  await db.write();
+  try {
+    await checkAppointmentReminders(now);
+    await db.write();
+  } finally {
+    isRunning = false;
+  }
 }
 
 async function checkAppointmentReminders(now) {

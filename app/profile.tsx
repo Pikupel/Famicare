@@ -164,7 +164,7 @@ export default function ProfileScreen() {
             <TouchableOpacity style={styles.deleteBtn} onPress={() => router.push('/delete-account')}>
               <Text style={{ ...typography.button, color: colors.danger }}>Hesabımı ve Verilerimi Sil</Text>
             </TouchableOpacity>
-            <TouchableOpacity style={styles.logoutBtn} onPress={async () => { await AsyncStorage.removeItem('famicare_session'); logout(); router.replace('/welcome'); }}>
+            <TouchableOpacity style={styles.logoutBtn} onPress={async () => { logout(); router.replace('/welcome'); }}>
               <Text style={{ ...typography.button, color: colors.danger }}>Çıkış Yap</Text>
             </TouchableOpacity>
           </>

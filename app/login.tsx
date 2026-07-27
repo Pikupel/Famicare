@@ -84,9 +84,9 @@ export default function LoginScreen() {
             </>
           ) : null}
           <Text style={{ ...typography.body, color: colors.text, textAlign: 'center', marginBottom: spacing.lg }}>
-            {isExisting ? 'PIN kodunuzu girin' : 'Bir PIN kodu belirleyin (4 haneli)'}
+            {isExisting ? 'PIN kodunuzu girin' : 'Bir PIN kodu belirleyin (4-6 haneli)'}
           </Text>
-          <TextInput style={[styles.input, { textAlign: 'center', fontSize: 24, letterSpacing: 8 }]} value={pin} onChangeText={(v) => setPin(v.replace(/[^0-9]/g, '').slice(0, 4))} placeholder="••••" keyboardType="number-pad" maxLength={4} secureTextEntry autoFocus />
+          <TextInput style={[styles.input, { textAlign: 'center', fontSize: 24, letterSpacing: 8 }]} value={pin} onChangeText={(v) => setPin(v.replace(/[^0-9]/g, '').slice(0, 6))} placeholder="PIN" keyboardType="number-pad" maxLength={6} secureTextEntry autoFocus />
           <Button title={loading ? 'Giriş yapılıyor...' : 'Giriş Yap'} onPress={handleLogin} disabled={loading || pin.length < 4} style={{ marginTop: spacing.md }} />
           <TouchableOpacity onPress={() => setStep('phone')} style={{ marginTop: spacing.md, minHeight: 44, justifyContent: 'center', alignItems: 'center' }}>
             <Text style={{ ...typography.body, color: colors.primary }}>← Geri</Text>
