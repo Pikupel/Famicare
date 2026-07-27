@@ -1,5 +1,5 @@
 import { Router } from 'express';
-import { db, uuid, writeToDb, deleteFromDb, pgPool } from '../db.js';
+import { db, uuid, pgPool, deleteRelationalData } from '../db.js';
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
 import { timingSafeEqual } from 'crypto';
@@ -89,6 +89,14 @@ async function recordAudit(req, action, resourceType, resourceId, details = {}) 
 function requireConfirmation(req, res, phrase) {
   if (req.body?.confirmation !== phrase) {
     res.status(400).json({ error: `Onay için "${phrase}" yazılmalıdır` });
+    return false;
+  }
+  return true;
+}
+
+function requirePersistentDatabase(req, res) {
+  if (process.env.DATABASE_URL && !pgPool) {
+    res.status(503).json({ error: 'Kalıcı veritabanına ulaşılamıyor. Silme işlemi uygulanmadı.' });
     return false;
   }
   return true;
@@ -185,6 +193,7 @@ router.get('/profiles', (req, res) => {
 // Delete a user by ID (cascade)
 router.delete('/users/:id', async (req, res) => {
   if (!requireConfirmation(req, res, 'KULLANICIYI SİL')) return;
+  if (!requirePersistentDatabase(req, res)) return;
   const user = db.data.users.find(u => u.id === req.params.id);
   if (!user) return res.status(404).json({ error: 'Kullanıcı bulunamadı' });
   const uid = req.params.id;
@@ -208,6 +217,7 @@ router.delete('/users/:id', async (req, res) => {
   db.data.profiles = db.data.profiles.filter(p => p.caregiverId !== uid);
   for (const profile of db.data.profiles.filter(p => p.linkedUserId === uid)) profile.linkedUserId = null;
   await db.write();
+  await deleteRelationalData({ userIds: [uid], profileIds: [uid, ...ownedProfiles.map(profile => profile.id)] });
   await recordAudit(req, 'user.delete', 'user', uid, { name: user.name });
   res.json({ success: true, deletedName: user.name });
 });
@@ -239,6 +249,7 @@ router.patch('/profiles/:id', async (req, res) => {
 // Delete a profile by ID (cascade with PostgreSQL sync)
 router.delete('/profiles/:id', async (req, res) => {
   if (!requireConfirmation(req, res, 'PROFİLİ SİL')) return;
+  if (!requirePersistentDatabase(req, res)) return;
   const profile = db.data.profiles.find(p => p.id === req.params.id);
   if (!profile) return res.status(404).json({ error: 'Profil bulunamadı' });
   const pid = req.params.id;
@@ -249,15 +260,7 @@ router.delete('/profiles/:id', async (req, res) => {
   db.data.healthRecords = db.data.healthRecords.filter(r => r.profileId !== pid);
   db.data.emergencies = db.data.emergencies.filter(e => e.profileId !== pid);
   await db.write();
-  if (pgPool) {
-    try {
-      await pgPool.query('DELETE FROM profiles WHERE id = $1', [pid]);
-      await pgPool.query('DELETE FROM medications WHERE profile_id = $1', [pid]);
-      await pgPool.query('DELETE FROM medication_logs WHERE profile_id = $1', [pid]);
-      await pgPool.query('DELETE FROM appointments WHERE profile_id = $1', [pid]);
-      await pgPool.query('DELETE FROM health_records WHERE profile_id = $1', [pid]);
-    } catch {}
-  }
+  await deleteRelationalData({ profileIds: [pid] });
   await recordAudit(req, 'profile.delete', 'profile', pid, { name: profile.name });
   res.json({ success: true, deletedName: profile.name });
 });
@@ -277,6 +280,7 @@ router.post('/test-push', async (req, res) => {
 // Clear all data
 router.post('/clear-all', async (req, res) => {
   if (!requireConfirmation(req, res, 'TÜM VERİYİ SİL')) return;
+  if (!requirePersistentDatabase(req, res)) return;
   const { adminBackups = [], adminAuditLogs = [], ...backupData } = db.data;
   const backup = { id: uuid(), createdAt: new Date().toISOString(), data: structuredClone(backupData) };
   db.data.adminBackups = [backup, ...adminBackups].slice(0, 3);
@@ -291,6 +295,7 @@ router.post('/clear-all', async (req, res) => {
   db.data.emergencyContacts = [];
   db.data.inviteAttempts = {};
   await db.write();
+  await deleteRelationalData({ clearAll: true });
   await recordAudit(req, 'database.clear-all', 'database', 'primary', { backupId: backup.id });
   res.json({ success: true, message: 'Tüm veriler temizlendi' });
 });

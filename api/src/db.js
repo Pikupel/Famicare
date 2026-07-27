@@ -34,6 +34,8 @@ export async function initDb() {
       console.log('✅ PostgreSQL bağlantısı başarılı');
     } catch (e) {
       console.log('⚠️ PostgreSQL bağlanamadı:', e.message);
+      if (pgPool) await pgPool.end().catch(() => {});
+      pgPool = null;
     }
   }
 }
@@ -154,4 +156,38 @@ async function deleteFromDb(collection, id) {
   try { await pgPool.query(`DELETE FROM ${collection} WHERE id = $1`, [id]); } catch {}
 }
 
-export { db, uuidv4 as uuid, writeToDb, deleteFromDb, pgPool };
+async function deleteRelationalData({ userIds = [], profileIds = [], clearAll = false } = {}) {
+  if (!pgPool) return;
+  const client = await pgPool.connect();
+  try {
+    await client.query('BEGIN');
+    if (clearAll) {
+      for (const table of ['medication_logs', 'medications', 'appointments', 'health_records', 'notifications', 'emergencies', 'emergency_contacts', 'profiles', 'users']) {
+        await client.query(`DELETE FROM ${table}`);
+      }
+    } else {
+      const uniqueUsers = [...new Set(userIds.filter(Boolean))];
+      const uniqueProfiles = [...new Set(profileIds.filter(Boolean))];
+      if (uniqueProfiles.length) {
+        for (const table of ['medication_logs', 'medications', 'appointments', 'health_records', 'emergencies']) {
+          await client.query(`DELETE FROM ${table} WHERE profile_id = ANY($1::text[])`, [uniqueProfiles]);
+        }
+        await client.query('DELETE FROM profiles WHERE id = ANY($1::text[])', [uniqueProfiles]);
+      }
+      if (uniqueUsers.length) {
+        await client.query('DELETE FROM notifications WHERE user_id = ANY($1::text[])', [uniqueUsers]);
+        await client.query('DELETE FROM emergency_contacts WHERE user_id = ANY($1::text[])', [uniqueUsers]);
+        await client.query('UPDATE profiles SET linked_user_id = NULL WHERE linked_user_id = ANY($1::text[])', [uniqueUsers]);
+        await client.query('DELETE FROM users WHERE id = ANY($1::text[])', [uniqueUsers]);
+      }
+    }
+    await client.query('COMMIT');
+  } catch (error) {
+    await client.query('ROLLBACK').catch(() => {});
+    throw error;
+  } finally {
+    client.release();
+  }
+}
+
+export { db, uuidv4 as uuid, writeToDb, deleteFromDb, deleteRelationalData, pgPool };

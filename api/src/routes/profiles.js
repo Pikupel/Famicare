@@ -1,5 +1,5 @@
 import { Router } from 'express';
-import { db, uuid } from '../db.js';
+import { db, uuid, deleteRelationalData, pgPool } from '../db.js';
 import { authMiddleware } from '../middleware/auth.js';
 import { randomInt } from 'crypto';
 
@@ -116,6 +116,7 @@ router.get('/:id', (req, res) => {
 router.delete('/:id', async (req, res) => {
   const profile = db.data.profiles.find(p => p.id === req.params.id && p.caregiverId === req.user.id);
   if (!profile) return res.status(404).json({ error: 'Profil bulunamadı' });
+  if (process.env.DATABASE_URL && !pgPool) return res.status(503).json({ error: 'Kalıcı veritabanına ulaşılamıyor. Silme işlemi uygulanmadı.' });
   const medicationIds = db.data.medications.filter(m => m.profileId === profile.id).map(m => m.id);
   db.data.profiles = db.data.profiles.filter(p => p.id !== profile.id);
   db.data.medications = db.data.medications.filter(m => m.profileId !== profile.id);
@@ -124,6 +125,7 @@ router.delete('/:id', async (req, res) => {
   db.data.appointments = db.data.appointments.filter(a => a.profileId !== profile.id);
   db.data.emergencies = db.data.emergencies.filter(e => e.profileId !== profile.id);
   await db.write();
+  await deleteRelationalData({ profileIds: [profile.id] });
   res.json({ success: true });
 });
 
