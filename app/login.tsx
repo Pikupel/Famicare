@@ -6,6 +6,7 @@ import { typography } from '../src/theme/typography';
 import { spacing, borderRadius } from '../src/theme/spacing';
 import { Button } from '../src/components/Button';
 import { useAuthStore } from '../src/stores/useAuthStore';
+import { useSubscriptionStore } from '../src/stores/useSubscriptionStore';
 import { api } from '../src/services/api';
 import { useThemedStyles } from '../src/theme/ThemeProvider';
 
@@ -15,6 +16,7 @@ export default function LoginScreen() {
   const params = useLocalSearchParams();
   const role = useAuthStore((s) => s.role);
   const login = useAuthStore((s) => s.login);
+  const syncSubscription = useSubscriptionStore((s) => s.syncFromRevenueCat);
   const isExisting = params.existing === '1';
   const [phone, setPhone] = useState('');
   const [name, setName] = useState('');
@@ -56,6 +58,7 @@ export default function LoginScreen() {
         // Existing user login
         const res = await api.post<{ user: { id: string; name: string; role: string }; token: string; refreshToken: string }>('/auth/login', { phone: phone.trim(), pin });
         login(res.user.name, res.token, res.user.id, res.user.role as any, res.refreshToken);
+        void syncSubscription(res.user.id);
         router.replace(res.user.role === 'caregiver' ? '/caregiver' : '/home');
       } else {
         // New registration
@@ -63,6 +66,7 @@ export default function LoginScreen() {
           phone: phone.trim(), name: name.trim(), role, pin, verificationId, verificationCode,
         });
         login(res.user.name, res.token, res.user.id, role!, res.refreshToken);
+        void syncSubscription(res.user.id);
         router.replace(role === 'caregiver' ? '/caregiver' : '/home');
       }
     } catch (err: any) {

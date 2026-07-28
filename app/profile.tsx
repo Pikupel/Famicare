@@ -6,6 +6,7 @@ import { colors } from '../src/theme/colors';
 import { typography } from '../src/theme/typography';
 import { spacing, borderRadius, shadow } from '../src/theme/spacing';
 import { useAuthStore } from '../src/stores/useAuthStore';
+import { useSubscriptionStore } from '../src/stores/useSubscriptionStore';
 import { BottomNav } from '../src/components/BottomNav';
 import { api } from '../src/services/api';
 import { useTheme, useThemedStyles } from '../src/theme/ThemeProvider';
@@ -27,6 +28,7 @@ export default function ProfileScreen() {
   const logout = useAuthStore((s) => s.logout);
   const refreshToken = useAuthStore((s) => s.refreshToken);
   const { toggleTheme, isDark, colors: themeColors } = useTheme();
+  const isSubscribed = useSubscriptionStore((s) => s.isSubscribed);
   const homeRoute = role === 'caregiver' ? '/caregiver' : '/home';
   const [avatarEmoji, setAvatarEmoji] = useState('👤');
   const [bloodType, setBloodType] = useState('Eklenmedi');
@@ -168,6 +170,11 @@ export default function ProfileScreen() {
                 <Text style={{ fontSize: 20, color: colors.textLight }}>›</Text>
               </TouchableOpacity>
             </View>
+            <TouchableOpacity style={styles.helpBtn} onPress={() => router.push('/subscribe')}>
+              <Text style={{ ...typography.button, color: isSubscribed ? colors.secondary : colors.primary }}>
+                {isSubscribed ? '🌟 Premium Üye' : '🌟 Premium\'a Geç'}
+              </Text>
+            </TouchableOpacity>
             <TouchableOpacity style={styles.helpBtn} onPress={toggleTheme}>
               <Text style={{ ...typography.button, color: colors.textLight }}>{isDark ? '☀️' : '🌙'} {isDark ? 'Aydınlık Tema' : 'Karanlık Tema'}</Text>
             </TouchableOpacity>

@@ -2,9 +2,11 @@ import { Router } from 'express';
 import { db, uuid } from '../db.js';
 import { authMiddleware } from '../middleware/auth.js';
 import { requireProfileAccess, canManageRecord } from '../middleware/access.js';
+import { requireSubscription } from '../middleware/subscription.js';
 
 const router = Router();
 router.use(authMiddleware);
+router.use(requireSubscription);
 
 router.get('/profile/:profileId', (req, res) => {
   const profile = requireProfileAccess(req, res, req.params.profileId);

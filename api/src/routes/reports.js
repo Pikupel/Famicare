@@ -3,10 +3,12 @@ import { db } from '../db.js';
 import { authMiddleware } from '../middleware/auth.js';
 import PDFDocument from 'pdfkit';
 import { requireProfileAccess } from '../middleware/access.js';
+import { requireSubscription } from '../middleware/subscription.js';
 import { localDate, getUserTimezone } from '../utils/date.js';
 
 const router = Router();
 router.use(authMiddleware);
+router.use(requireSubscription);
 
 router.get('/adherence', async (req, res) => {
   const userId = String(req.query.profileId || req.user.id);

@@ -9,6 +9,7 @@ import { api } from '../src/services/api';
 import { useAuthStore } from '../src/stores/useAuthStore';
 import { useThemedStyles } from '../src/theme/ThemeProvider';
 import { MONTHS, WEEKDAYS, getCalendarOffset } from '../src/utils/calendar';
+import { PremiumGate } from '../src/components/PremiumGate';
 
 function toLocalDate(isoDate: string) {
   if (!isoDate) return { d: '', m: '', y: '' };
@@ -58,6 +59,7 @@ export default function AppointmentsScreen() {
         <Text style={{ ...typography.h2, color: colors.text, marginTop: spacing.sm }}>Randevularım</Text>
       </View>
 
+      <PremiumGate featureName="Randevular">
       <View style={[styles.calendarCard, shadow.card]}>
         <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: spacing.md }}>
           <TouchableOpacity onPress={() => changeMonth(-1)} style={{ minWidth: 44, minHeight: 44, alignItems: 'center', justifyContent: 'center' }}><Text style={{ fontSize: 22, color: colors.primary }}>‹</Text></TouchableOpacity>
@@ -127,6 +129,7 @@ export default function AppointmentsScreen() {
         <Text style={{ fontSize: 28, color: '#FFF', marginTop: -2 }}>+</Text>
       </TouchableOpacity>
       <View style={{ paddingBottom: insets.bottom }} />
+      </PremiumGate>
     </View>
   );
 }

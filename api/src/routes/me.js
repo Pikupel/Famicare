@@ -24,6 +24,17 @@ router.patch('/', async (req, res) => {
   res.json(db.data.users[idx]);
 });
 
+router.patch('/subscription', async (req, res) => {
+  const { isSubscribed, productId, expiresAt } = req.body;
+  const idx = db.data.users.findIndex(u => u.id === req.user.id);
+  if (idx === -1) return res.status(404).json({ error: 'Kullanıcı bulunamadı' });
+  db.data.users[idx].subscription = isSubscribed ? 'premium' : null;
+  db.data.users[idx].subscriptionProductId = productId || null;
+  db.data.users[idx].subscriptionExpiresAt = expiresAt || null;
+  await db.write();
+  res.json({ success: true, subscription: db.data.users[idx].subscription });
+});
+
 router.delete('/', async (req, res) => {
   if (req.body?.confirmation !== 'HESABIMI SİL') return res.status(400).json({ error: 'Onay metni HESABIMI SİL olmalıdır' });
   if (process.env.DATABASE_URL && !pgPool) return res.status(503).json({ error: 'Kalıcı veritabanına ulaşılamıyor. Hesap silinmedi.' });
