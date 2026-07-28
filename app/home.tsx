@@ -51,7 +51,7 @@ export default function HomeScreen() {
         const data = await api.get<{ medications: any[]; logs: any[] }>(`/medications/profile/${userId}/today`);
         setMedications(data.medications);
         setTodayLogs(data.logs);
-        cacheData(cacheKey, data);
+        void cacheData(cacheKey, data);
         await setupNotifications();
         await syncMedicationReminders(data.medications);
       } catch {

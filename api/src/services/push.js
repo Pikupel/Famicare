@@ -40,26 +40,25 @@ export async function sendPush(userId, title, body, data = {}) {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(message),
     });
-    const data = await res.json();
-    if (data.data?.status === 'error') {
-      console.error('[PUSH] Error:', data.data.message);
-      // If invalid token, clear it
-      if (data.data.message?.includes('Invalid')) {
+    const response = await res.json();
+    if (response.data?.status === 'error') {
+      console.error('[PUSH] Error:', response.data.message);
+      if (response.data.message?.includes('Invalid')) {
         user.fcmToken = null;
         await db.write();
       }
-      const result = { success: false, reason: data.data.message || 'push_error' };
-      await recordDelivery({ userId, status: 'failed', ...result });
-      return result;
+      const deliveryResult = { success: false, reason: response.data.message || 'push_error' };
+      await recordDelivery({ userId, status: 'failed', ...deliveryResult });
+      return deliveryResult;
     }
-    const result = { success: true, ticketId: data.data?.id || null };
-    await recordDelivery({ userId, status: 'ticket_received', ...result });
-    return result;
+    const deliveryResult = { success: true, ticketId: response.data?.id || null };
+    await recordDelivery({ userId, status: 'ticket_received', ...deliveryResult });
+    return deliveryResult;
   } catch (err) {
     console.error('[PUSH] Failed:', err.message);
-    const result = { success: false, reason: err.message };
-    await recordDelivery({ userId, status: 'failed', ...result });
-    return result;
+    const deliveryResult = { success: false, reason: err.message };
+    await recordDelivery({ userId, status: 'failed', ...deliveryResult });
+    return deliveryResult;
   }
 }
 
