@@ -44,6 +44,12 @@ function checkRegistrationRate(req, res) {
   return true;
 }
 
+setInterval(() => {
+  const now = Date.now();
+  for (const [ip, r] of verificationAttempts) { if (r.blockUntil && r.blockUntil < now) verificationAttempts.delete(ip); }
+  for (const [ip, r] of registrationAttempts) { if (r.blockUntil && r.blockUntil < now) registrationAttempts.delete(ip); }
+}, 30 * 60 * 1000).unref();
+
 router.post('/register', async (req, res) => {
   if (!checkRegistrationRate(req, res)) return;
   const { name, role, pin } = req.body;

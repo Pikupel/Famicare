@@ -17,7 +17,7 @@ export function localDate(date = new Date(), timezone = DEFAULT_TIMEZONE) {
 
 export function dateDaysAgo(days, timezone = DEFAULT_TIMEZONE) {
   const date = new Date();
-  date.setUTCDate(date.getUTCDate() - days);
+  date.setDate(date.getDate() - days);
   return localDate(date, timezone);
 }
 

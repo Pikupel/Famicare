@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { View, Text, TouchableOpacity, StyleSheet, ScrollView, Alert } from 'react-native';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import * as SecureStore from 'expo-secure-store';
 import { colors } from '../src/theme/colors';
 import { typography } from '../src/theme/typography';
 import { spacing, borderRadius, shadow } from '../src/theme/spacing';
@@ -38,7 +39,7 @@ export default function ProfileScreen() {
     AsyncStorage.getItem('famicare_avatar').then(a => {
       if (a && AVATAR_EMOJI[a]) setAvatarEmoji(AVATAR_EMOJI[a]);
     });
-    AsyncStorage.getItem('famicare_bloodtype').then(b => { if (b) setBloodType(b); });
+    SecureStore.getItemAsync('famicare_bloodtype').then(b => { if (b) setBloodType(b); }).catch(() => {});
     if (userId) {
       api.get<any[]>(`/health/profile/${userId}?type=weight`).then(records => {
         const latest = records.sort((a, b) => new Date(b.measuredAt).getTime() - new Date(a.measuredAt).getTime())[0];

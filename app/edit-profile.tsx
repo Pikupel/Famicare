@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { View, Text, TextInput, TouchableOpacity, StyleSheet, ScrollView, Alert } from 'react-native';
 import { useRouter } from 'expo-router';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import * as SecureStore from 'expo-secure-store';
 import { colors } from '../src/theme/colors';
 import { typography } from '../src/theme/typography';
 import { spacing, borderRadius } from '../src/theme/spacing';
@@ -31,7 +32,7 @@ export default function EditProfileScreen() {
     try {
       await api.patch('/me', { name: name.trim() });
       if (avatar) await AsyncStorage.setItem('famicare_avatar', avatar);
-      if (bloodType) await AsyncStorage.setItem('famicare_bloodtype', bloodType);
+      if (bloodType) await SecureStore.setItemAsync('famicare_bloodtype', bloodType);
       login(name.trim(), token || '', userId, role, refreshToken || '');
       Alert.alert('Başarılı', 'Profil güncellendi');
       router.back();

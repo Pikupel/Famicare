@@ -7,6 +7,26 @@ import { localDate, getUserTimezone, dateDaysAgo, isMedicationActiveOn } from '.
 const router = Router();
 router.use(authMiddleware);
 
+const stockLocks = new Map();
+
+function acquireStockLock(medicationId) {
+  return new Promise(resolve => {
+    const check = () => {
+      if (!stockLocks.has(medicationId)) {
+        stockLocks.set(medicationId, true);
+        resolve();
+      } else {
+        setTimeout(check, 50);
+      }
+    };
+    check();
+  });
+}
+
+function releaseStockLock(medicationId) {
+  stockLocks.delete(medicationId);
+}
+
 router.get('/profile/:profileId', (req, res) => {
   const profile = requireProfileAccess(req, res, req.params.profileId);
   if (!profile) return;
@@ -46,7 +66,7 @@ router.post('/', async (req, res) => {
   }
   const medication = {
     id: uuid(), profileId: profile.id, name, dosage: dosage || '', instructions: instructions || '',
-    times: times || ['09:00'], repeatInterval: 15, endDate: endDate || '',
+    times: times || ['09:00'], endDate: endDate || '',
     purpose: purpose || '',
     drugRefId: drugRefId || null,
     stockTotal: parsedStock,
@@ -111,9 +131,17 @@ router.post('/:id/log', async (req, res) => {
   }
 
   if (medication.stockTotal !== null && medication.stockTotal !== '' && Number.isFinite(Number(medication.stockTotal))) {
-    const units = Number(medication.unitsPerDose) > 0 ? Number(medication.unitsPerDose) : 1;
-    if (becameCompleted) medication.stockTotal = Math.max(0, Number(medication.stockTotal) - units);
-    if (becameIncomplete) medication.stockTotal = Number(medication.stockTotal) + units;
+    await acquireStockLock(medication.id);
+    try {
+      const currentMedication = db.data.medications.find(m => m.id === medication.id);
+      if (!currentMedication) { releaseStockLock(medication.id); return; }
+      const units = Number(currentMedication.unitsPerDose) > 0 ? Number(currentMedication.unitsPerDose) : 1;
+      if (becameCompleted) currentMedication.stockTotal = Math.max(0, Number(currentMedication.stockTotal) - units);
+      if (becameIncomplete) currentMedication.stockTotal = Number(currentMedication.stockTotal) + units;
+      medication.stockTotal = currentMedication.stockTotal;
+    } finally {
+      releaseStockLock(medication.id);
+    }
   }
 
   await db.write();
