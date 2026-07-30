@@ -217,7 +217,6 @@ router.patch('/:id', async (req, res) => {
     const parsedStock = Number(stockTotal);
     if (!Number.isFinite(parsedStock) || parsedStock < 0) return res.status(400).json({ error: 'Geçerli stok miktarı girin' });
     db.data.medications[idx].stockTotal = parsedStock;
-    db.data.medications[idx].packageCapacity = parsedStock;
   }
   await db.write();
   res.json(db.data.medications[idx]);

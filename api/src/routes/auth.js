@@ -6,7 +6,13 @@ import { createSession, rotateSession, revokeSession, revokeUserSessions } from 
 import { requestPhoneVerification, consumePhoneVerification } from '../services/phone-verification.js';
 
 const router = Router();
-const isUnverifiedRegistrationEnabled = () => process.env.ALLOW_UNVERIFIED_REGISTRATION === 'true';
+const isUnverifiedRegistrationEnabled = () => {
+  if (process.env.ALLOW_UNVERIFIED_REGISTRATION === 'true' && process.env.NODE_ENV === 'production') {
+    console.error('[SECURITY] ALLOW_UNVERIFIED_REGISTRATION=true üretimde kullanılamaz. Zorla devre dışı bırakıldı.');
+    return false;
+  }
+  return process.env.ALLOW_UNVERIFIED_REGISTRATION === 'true';
+};
 
 const verificationAttempts = new Map();
 function checkVerificationRate(req, res) {
