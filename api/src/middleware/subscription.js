@@ -6,5 +6,10 @@ export function requireSubscription(req, res, next) {
   if (!user.subscription || user.subscription !== 'premium') {
     return res.status(402).json({ error: 'Bu özellik premium üyelik gerektirir', requiresSubscription: true });
   }
+  if (user.subscriptionExpiresAt && user.subscriptionExpiresAt !== 'lifetime') {
+    if (new Date(user.subscriptionExpiresAt) < new Date()) {
+      return res.status(402).json({ error: 'Premium üyeliğiniz sona ermiş', requiresSubscription: true, expired: true });
+    }
+  }
   next();
 }
