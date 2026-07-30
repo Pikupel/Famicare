@@ -103,7 +103,7 @@ async function checkScheduledEvents() {
           isRead: false, createdAt: now.toISOString(),
         };
         db.data.notifications.push(notification);
-        await sendPush(notification.userId, notification.title, notification.body, { doseKey, type: 'missed_dose' });
+        await sendPush(notification.userId, notification.title, notification.body, { doseKey, type: 'missed_dose', medicationId: medication.id, scheduledTime, url: `/confirm-medication?id=${encodeURIComponent(medication.id)}&name=${encodeURIComponent(medication.name)}&time=${encodeURIComponent(scheduledTime)}` });
       }
     }
   }
@@ -145,7 +145,7 @@ async function checkAppointmentReminders(now) {
         isRead: false, createdAt: now.toISOString(),
       };
       db.data.notifications.push(notification);
-      await sendPush(userId, notification.title, notification.body, { type: 'appointment', appointmentId: appointment.id });
+      await sendPush(userId, notification.title, notification.body, { type: 'appointment', appointmentId: appointment.id, url: `/appointments?profileId=${encodeURIComponent(appointment.profileId)}` });
     }
   }
 }

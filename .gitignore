@@ -42,3 +42,4 @@ api/db.json
 /ios
 /android
 .git-rewrite/
+api/db.example.json
