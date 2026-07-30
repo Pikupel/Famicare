@@ -1,4 +1,4 @@
-import { db } from '../db.js';
+import { db, uuid } from '../db.js';
 
 const EXPO_PUSH_URL = 'https://exp.host/--/api/v2/push/send';
 const EXPO_RECEIPTS_URL = 'https://exp.host/--/api/v2/push/getReceipts';
@@ -45,6 +45,13 @@ export async function sendPush(userId, title, body, data = {}) {
       console.error('[PUSH] Error:', response.data.message);
       if (response.data.message?.includes('Invalid')) {
         user.fcmToken = null;
+        db.data.notifications.push({
+          id: uuid(), userId, type: 'system',
+          title: 'Bildirimler çalışmıyor',
+          body: 'Cihaz bildirim izniniz kaldırılmış veya süresi dolmuş. Uygulamayı açıp ana sayfayı ziyaret ederek bildirimleri yeniden etkinleştirin.',
+          data: { url: user.role === 'caregiver' ? '/caregiver' : '/home' },
+          isRead: false, createdAt: new Date().toISOString(),
+        });
         await db.write();
       }
       const deliveryResult = { success: false, reason: response.data.message || 'push_error' };

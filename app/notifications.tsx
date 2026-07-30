@@ -68,6 +68,8 @@ export default function NotificationsScreen() {
                   }
                 } else if (n.type?.includes('appointment')) {
                   router.push('/appointments');
+                } else if (n.data?.url) {
+                  router.push(n.data.url as never);
                 }
               }}
             >
