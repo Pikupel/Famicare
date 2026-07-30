@@ -66,7 +66,7 @@ async function checkScheduledEvents() {
     for (const scheduledTime of medication.times) {
       const [hour, minute] = scheduledTime.split(':').map(Number);
       const elapsed = local.minutes - (hour * 60 + minute);
-      if (elapsed < 30 || elapsed > 90) continue;
+      if (elapsed < 30 || elapsed > 240) continue;
 
       const log = db.data.medicationLogs.find(l =>
         l.medicationId === medication.id && l.date === local.date && l.scheduledTime === scheduledTime

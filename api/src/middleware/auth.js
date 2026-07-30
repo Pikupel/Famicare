@@ -7,7 +7,7 @@ const JWT_SECRET = process.env.JWT_SECRET;
 if (!JWT_SECRET && process.env.NODE_ENV === 'production') {
   throw new Error('JWT_SECRET üretim ortamında zorunludur');
 }
-const effectiveSecret = JWT_SECRET || randomBytes(48).toString('base64url');
+const effectiveSecret = JWT_SECRET || (console.warn('[AUTH] JWT_SECRET tanımlanmamış, geçici rastgele secret kullanılıyor. Yeniden başlatmada tüm token\'lar geçersiz olur.'), randomBytes(48).toString('base64url'));
 
 export function generateToken(user, sessionId = null) {
   return jwt.sign(
