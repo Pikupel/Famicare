@@ -41,3 +41,4 @@ api/db.json
 # generated native folders
 /ios
 /android
+.git-rewrite/
