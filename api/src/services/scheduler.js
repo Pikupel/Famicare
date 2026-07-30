@@ -123,12 +123,17 @@ async function checkScheduledEvents() {
 async function checkAppointmentReminders(now) {
   for (const appointment of db.data.appointments) {
     if (appointment.status === 'cancelled' || !appointment.date || !appointment.time) continue;
-    const target = new Date(`${appointment.date}T${appointment.time}:00+03:00`);
-    const hoursUntil = (target.getTime() - now.getTime()) / 3600000;
+    const profile = db.data.profiles.find(p => p.id === appointment.profileId);
+    const patient = db.data.users.find(u => u.id === (profile?.linkedUserId || appointment.profileId));
+    const timezone = patient?.timezone || 'Europe/Istanbul';
+    const local = localParts(now, timezone);
+    const apptHour = parseInt(appointment.time.split(':')[0]);
+    const apptMinute = parseInt(appointment.time.split(':')[1]);
+    const apptMinutes = apptHour * 60 + apptMinute;
+    const hoursUntil = (apptMinutes - local.minutes) / 60;
     if (hoursUntil <= 0 || hoursUntil > 25) continue;
     const reminderKey = `appointment:${appointment.id}:24h`;
     if (db.data.notifications.some(n => n.reminderKey === reminderKey)) continue;
-    const profile = db.data.profiles.find(p => p.id === appointment.profileId);
     const recipients = [profile?.linkedUserId, profile?.caregiverId, appointment.profileId]
       .filter(userId => userId && db.data.users.some(user => user.id === userId));
     for (const userId of new Set(recipients)) {

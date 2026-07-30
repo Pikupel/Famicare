@@ -66,7 +66,7 @@ router.post('/', async (req, res) => {
   }
   const medication = {
     id: uuid(), profileId: profile.id, name, dosage: dosage || '', instructions: instructions || '',
-    times: times || ['09:00'], endDate: endDate || '',
+    times: times, endDate: endDate || '',
     purpose: purpose || '',
     drugRefId: drugRefId || null,
     stockTotal: parsedStock,
@@ -139,12 +139,14 @@ router.post('/:id/log', async (req, res) => {
       if (becameCompleted) currentMedication.stockTotal = Math.max(0, Number(currentMedication.stockTotal) - units);
       if (becameIncomplete) currentMedication.stockTotal = Number(currentMedication.stockTotal) + units;
       medication.stockTotal = currentMedication.stockTotal;
+      await db.write();
     } finally {
       releaseStockLock(medication.id);
     }
+  } else {
+    await db.write();
   }
 
-  await db.write();
   res.status(existingIdx >= 0 ? 200 : 201).json({ ...logEntry, stockTotal: medication.stockTotal });
 });
 
@@ -204,10 +206,10 @@ router.patch('/:id', async (req, res) => {
       return res.status(400).json({ error: 'Geçerli bitiş tarihi girin' });
     }
   }
-  if (name) db.data.medications[idx].name = name;
-  if (dosage) db.data.medications[idx].dosage = dosage;
-  if (instructions) db.data.medications[idx].instructions = instructions;
-  if (times) db.data.medications[idx].times = times;
+  if (name !== undefined) db.data.medications[idx].name = name;
+  if (dosage !== undefined) db.data.medications[idx].dosage = dosage;
+  if (instructions !== undefined) db.data.medications[idx].instructions = instructions;
+  if (times !== undefined) db.data.medications[idx].times = times;
   if (purpose !== undefined) db.data.medications[idx].purpose = purpose;
   if (endDate !== undefined) db.data.medications[idx].endDate = endDate;
   if (isActive !== undefined) db.data.medications[idx].isActive = Boolean(isActive);

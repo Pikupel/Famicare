@@ -57,13 +57,26 @@ router.delete('/:id', async (req, res) => {
 });
 
 function validateHealthValue(type, value = {}) {
-  const number = key => Number(value?.[key]);
+  const safe = key => {
+    const v = Number(value?.[key]);
+    return Number.isNaN(v) ? NaN : v;
+  };
   if (type === 'blood_pressure') {
-    if (number('systolic') < 50 || number('systolic') > 260 || number('diastolic') < 30 || number('diastolic') > 160) return 'Tansiyon değeri geçerli aralıkta değil';
-    if (number('systolic') <= number('diastolic')) return 'Büyük tansiyon küçük tansiyondan yüksek olmalıdır';
+    const s = safe('systolic'), d = safe('diastolic');
+    if (Number.isNaN(s) || Number.isNaN(d)) return 'Geçerli bir sayı girin';
+    if (s < 50 || s > 260 || d < 30 || d > 160) return 'Tansiyon değeri geçerli aralıkta değil';
+    if (s <= d) return 'Büyük tansiyon küçük tansiyondan yüksek olmalıdır';
   }
-  if (type === 'blood_sugar' && (number('sugar') < 20 || number('sugar') > 700)) return 'Kan şekeri değeri geçerli aralıkta değil';
-  if (type === 'weight' && (number('weight') < 2 || number('weight') > 500)) return 'Kilo değeri geçerli aralıkta değil';
+  if (type === 'blood_sugar') {
+    const sugar = safe('sugar');
+    if (Number.isNaN(sugar)) return 'Geçerli bir sayı girin';
+    if (sugar < 20 || sugar > 700) return 'Kan şekeri değeri geçerli aralıkta değil';
+  }
+  if (type === 'weight') {
+    const w = safe('weight');
+    if (Number.isNaN(w)) return 'Geçerli bir sayı girin';
+    if (w < 2 || w > 500) return 'Kilo değeri geçerli aralıkta değil';
+  }
   return null;
 }
 
