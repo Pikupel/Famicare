@@ -1,5 +1,6 @@
 import express from 'express';
 import cors from 'cors';
+import rateLimit from 'express-rate-limit';
 import { join, dirname } from 'path';
 import { fileURLToPath } from 'url';
 import { initDb } from './db.js';
@@ -38,6 +39,15 @@ app.use(cors({
 }));
 app.use(express.json({ limit: '100kb' }));
 app.disable('x-powered-by');
+
+app.use(rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 200,
+  standardHeaders: true,
+  legacyHeaders: false,
+  skip: (req) => req.path === '/api/v1/ping',
+}));
+
 app.use((req, res, next) => {
   res.setHeader('X-Content-Type-Options', 'nosniff');
   res.setHeader('X-Frame-Options', 'DENY');

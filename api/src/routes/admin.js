@@ -56,10 +56,10 @@ router.post('/session', async (req, res) => {
   const configuredUsername = normalizeUsername(effectiveAdminUsername);
   const usernameValid = sameSecret(receivedUsername, configuredUsername);
   const passwordValid = usernameValid && await bcrypt.compare(String(req.body?.password || ''), effectiveAdminPasswordHash);
-  const totpResult = passwordValid && /^\d{6}$/.test(req.body?.totp || '')
+  const totpValid = passwordValid && /^\d{6}$/.test(req.body?.totp || '')
     ? await verifyTotp({ secret: effectiveAdminTotpSecret, token: req.body.totp })
-    : { valid: false };
-  if (!usernameValid || !passwordValid || !totpResult.valid) {
+    : false;
+  if (!usernameValid || !passwordValid || !totpValid) {
     console.warn('[ADMIN AUTH] Login rejected');
     const failures = (attempt?.failures || 0) + 1;
     adminLoginAttempts.set(identifier, failures >= 5

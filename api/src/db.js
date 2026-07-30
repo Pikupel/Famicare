@@ -114,7 +114,7 @@ async function migratePg() {
     CREATE TABLE IF NOT EXISTS medication_logs (id TEXT PRIMARY KEY, medication_id TEXT, profile_id TEXT, scheduled_time TEXT, date TEXT, status TEXT, taken_at TIMESTAMPTZ, confirmed_by TEXT, changed_by TEXT);
     CREATE TABLE IF NOT EXISTS appointments (id TEXT PRIMARY KEY, profile_id TEXT, title TEXT, location TEXT, doctor_name TEXT, date TEXT, time TEXT, notes TEXT, status TEXT, created_at TIMESTAMPTZ DEFAULT NOW());
     CREATE TABLE IF NOT EXISTS health_records (id TEXT PRIMARY KEY, profile_id TEXT, record_type TEXT, value_data JSONB DEFAULT '{}', measured_at TIMESTAMPTZ DEFAULT NOW(), recorded_by TEXT);
-    CREATE TABLE IF NOT EXISTS notifications (id TEXT PRIMARY KEY, user_id TEXT, type TEXT, title TEXT, body TEXT, is_read BOOLEAN DEFAULT false, created_at TIMESTAMPTZ DEFAULT NOW());
+    CREATE TABLE IF NOT EXISTS notifications (id TEXT PRIMARY KEY, user_id TEXT, type TEXT, title TEXT, body TEXT, is_read BOOLEAN DEFAULT false, dose_key TEXT, reminder_key TEXT, data JSONB DEFAULT '{}', created_at TIMESTAMPTZ DEFAULT NOW());
     CREATE TABLE IF NOT EXISTS emergencies (id TEXT PRIMARY KEY, profile_id TEXT, status TEXT, created_at TIMESTAMPTZ DEFAULT NOW());
     CREATE TABLE IF NOT EXISTS emergency_contacts (id TEXT PRIMARY KEY, user_id TEXT, name TEXT, phone TEXT, relationship TEXT);
     CREATE TABLE IF NOT EXISTS app_state (id TEXT PRIMARY KEY, data JSONB NOT NULL, updated_at TIMESTAMPTZ DEFAULT NOW());
@@ -134,7 +134,7 @@ async function migratePg() {
   await syncFromPg('medication_logs', 'id', 'medication_id', 'profile_id', 'scheduled_time', 'date', 'status', 'taken_at', 'confirmed_by', 'changed_by');
   await syncFromPg('appointments', 'id', 'profile_id', 'title', 'location', 'doctor_name', 'date', 'time', 'notes', 'status');
   await syncFromPg('health_records', 'id', 'profile_id', 'record_type', 'value_data', 'measured_at', 'recorded_by');
-  await syncFromPg('notifications', 'id', 'user_id', 'type', 'title', 'body', 'is_read');
+  await syncFromPg('notifications', 'id', 'user_id', 'type', 'title', 'body', 'is_read', 'dose_key', 'reminder_key', 'data');
   await persistSnapshot();
   console.log('📦 PostgreSQL → JSON senkronizasyon tamam');
 }
@@ -170,6 +170,7 @@ const SNAKE_TO_CAMEL = {
   created_at: 'createdAt', birth_date: 'birthDate', invite_code: 'inviteCode',
   is_active: 'isActive', end_date: 'endDate', stock_total: 'stockTotal',
   stock_refill_date: 'stockRefillDate', user_id: 'userId',
+  dose_key: 'doseKey', reminder_key: 'reminderKey',
 };
 
 async function syncFromPg(table, ...columns) {
