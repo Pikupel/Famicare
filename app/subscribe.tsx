@@ -5,6 +5,7 @@ import { colors } from '../src/theme/colors';
 import { typography } from '../src/theme/typography';
 import { spacing, borderRadius, shadow } from '../src/theme/spacing';
 import { useSubscriptionStore } from '../src/stores/useSubscriptionStore';
+import { useAuthStore } from '../src/stores/useAuthStore';
 import { getOfferings, purchasePackage, restorePurchases } from '../src/services/purchases';
 import { PurchasesPackage } from 'react-native-purchases';
 
@@ -23,7 +24,8 @@ const PLANS: Plan[] = [
 
 export default function SubscribeScreen() {
   const router = useRouter();
-  const setSubscribed = useSubscriptionStore((s) => s.setSubscribed);
+  const syncSubscription = useSubscriptionStore((s) => s.syncFromRevenueCat);
+  const userId = useAuthStore((s) => s.userId);
   const [offerings, setOfferings] = useState<Awaited<ReturnType<typeof getOfferings>>>({ monthly: null, annual: null, lifetime: null });
   const [selected, setSelected] = useState<'monthly' | 'annual' | 'lifetime'>('annual');
   const [loading, setLoading] = useState(true);
@@ -40,10 +42,14 @@ export default function SubscribeScreen() {
     setPurchasing(true);
     const success = await purchasePackage(selectedPackage);
     if (success) {
-      setSubscribed(true, selectedPackage.product.identifier, null);
-      Alert.alert('Hoş geldiniz!', 'Premium özellikleriniz aktif edildi.', [
-        { text: 'Başla', onPress: () => router.back() },
-      ]);
+      const verified = await syncSubscription(userId);
+      if (verified) {
+        Alert.alert('Hoş geldiniz!', 'Premium özellikleriniz aktif edildi.', [
+          { text: 'Başla', onPress: () => router.back() },
+        ]);
+      } else {
+        Alert.alert('Satın alma alındı', 'Mağaza işlemi tamamlandı ancak sunucu doğrulaması henüz sonuçlanmadı. Biraz sonra tekrar deneyin.');
+      }
     } else {
       Alert.alert('İptal edildi', 'Satın alma tamamlanmadı.');
     }
@@ -54,10 +60,14 @@ export default function SubscribeScreen() {
     setPurchasing(true);
     const restored = await restorePurchases();
     if (restored) {
-      setSubscribed(true);
-      Alert.alert('Geri yüklendi', 'Aboneliğiniz geri yüklendi.', [
-        { text: 'Tamam', onPress: () => router.back() },
-      ]);
+      const verified = await syncSubscription(userId);
+      if (verified) {
+        Alert.alert('Geri yüklendi', 'Aboneliğiniz geri yüklendi.', [
+          { text: 'Tamam', onPress: () => router.back() },
+        ]);
+      } else {
+        Alert.alert('Doğrulama bekleniyor', 'Satın alma bulundu ancak sunucu doğrulaması tamamlanamadı. Biraz sonra tekrar deneyin.');
+      }
     } else {
       Alert.alert('Bulunamadı', 'Aktif abonelik bulunamadı.');
     }
@@ -132,7 +142,7 @@ export default function SubscribeScreen() {
           onPress={handlePurchase}
           disabled={purchasing || !selectedPackage}
         >
-          <Text style={{ ...typography.h2, color: '#FFFFFF' }}>
+          <Text style={{ ...typography.h2, color: colors.onPrimary }}>
             {purchasing ? 'İşleniyor...' : 'Abone Ol'}
           </Text>
         </TouchableOpacity>

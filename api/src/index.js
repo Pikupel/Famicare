@@ -3,8 +3,8 @@ import cors from 'cors';
 import rateLimit from 'express-rate-limit';
 import { join, dirname } from 'path';
 import { fileURLToPath } from 'url';
-import { initDb } from './db.js';
-import { startScheduler } from './services/scheduler.js';
+import { initDb, pgPool } from './db.js';
+import { startScheduler, getSchedulerStatus } from './services/scheduler.js';
 import authRoutes from './routes/auth.js';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
@@ -20,6 +20,8 @@ import adminRoutes from './routes/admin.js';
 import meRoutes from './routes/me.js';
 import notificationRoutes from './routes/notifications.js';
 import dashboardRoutes from './routes/dashboard.js';
+import revenueCatRoutes from './routes/revenuecat.js';
+import { isProductionRuntime, isUnsafeRegistrationAllowed } from './utils/environment.js';
 
 const app = express();
 app.set('trust proxy', 1);
@@ -33,11 +35,14 @@ app.use(cors({
   origin(origin, callback) {
     if (!origin) return callback(null, true);
     if (allowedOrigins.includes(origin)) return callback(null, true);
-    if (process.env.NODE_ENV !== 'production' && !allowedOrigins.length) return callback(null, true);
+    if (!isProductionRuntime() && !allowedOrigins.length) return callback(null, true);
     callback(new Error('CORS origin reddedildi'));
   },
 }));
-app.use(express.json({ limit: '100kb' }));
+app.use(express.json({
+  limit: '100kb',
+  verify(req, res, buffer) { req.rawBody = Buffer.from(buffer); },
+}));
 app.disable('x-powered-by');
 
 app.use(rateLimit({
@@ -56,10 +61,24 @@ app.use((req, res, next) => {
 });
 
 app.use('/api/v1/auth', authRoutes);
+app.use('/api/v1/webhooks/revenuecat', revenueCatRoutes);
 app.use('/api/v1/profiles', profileRoutes);
 app.use('/api/v1/medications', medicationRoutes);
 app.use('/api/v1/appointments', appointmentRoutes);
-app.get('/api/v1/ping', (req, res) => res.json({ status: 'ok', timestamp: new Date().toISOString() }));
+app.get('/api/v1/ping', (req, res) => {
+  const scheduler = getSchedulerStatus();
+  const staleAfterMs = 15 * 60 * 1000;
+  const lastSuccessAge = scheduler.lastSuccessAt ? Date.now() - Date.parse(scheduler.lastSuccessAt) : null;
+  const schedulerHealthy = !scheduler.lastError && (lastSuccessAge === null || lastSuccessAge < staleAfterMs);
+  const databaseHealthy = !isProductionRuntime() || pgPool !== null;
+  const healthy = schedulerHealthy && databaseHealthy;
+  res.status(healthy ? 200 : 503).json({
+    status: healthy ? 'ok' : 'degraded',
+    timestamp: new Date().toISOString(),
+    database: databaseHealthy ? 'connected' : 'unavailable',
+    scheduler,
+  });
+});
 app.use('/api/v1/health', healthRoutes);
 app.use('/api/v1/emergency', emergencyRoutes);
 app.use('/api/v1/reports', reportRoutes);
@@ -86,7 +105,7 @@ app.get('/delete-account.js', (req, res) => {
   res.type('application/javascript').sendFile(join(publicDir, 'delete-account.js'));
 });
 app.use('/admin', (req, res, next) => {
-  res.setHeader('Content-Security-Policy', "default-src 'self'; style-src 'self' 'unsafe-inline'; script-src 'self' 'unsafe-inline'; object-src 'none'; base-uri 'none'; frame-ancestors 'none'");
+  res.setHeader('Content-Security-Policy', "default-src 'self'; style-src 'self' 'unsafe-inline'; script-src 'self' 'sha256-znpwW6GDmjbEs7lhhztUGrGfT0p0umDVdFq8XGyocW8='; connect-src 'self'; form-action 'self'; object-src 'none'; base-uri 'none'; frame-ancestors 'none'");
   res.setHeader('Cache-Control', 'no-store');
   next();
 }, express.static(join(__dirname, 'admin')));
@@ -95,8 +114,11 @@ app.use('/api/v1/notifications', notificationRoutes);
 app.use('/api/v1/dashboard', dashboardRoutes);
 
 await initDb();
-if (process.env.ALLOW_UNVERIFIED_REGISTRATION === 'true') {
+if (isUnsafeRegistrationAllowed()) {
   console.warn('[SECURITY] SMS doğrulaması devre dışı: ALLOW_UNVERIFIED_REGISTRATION=true');
+}
+if (!process.env.REVENUECAT_SECRET_API_KEY) {
+  console.warn('[SUBSCRIPTION] REVENUECAT_SECRET_API_KEY eksik; premium sunucu doğrulaması kullanılamaz.');
 }
 startScheduler();
 app.listen(PORT, () => {

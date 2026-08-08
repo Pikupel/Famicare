@@ -96,6 +96,9 @@ router.post('/:id/log', async (req, res) => {
   const selectedTime = scheduledTime || medication.times?.[0];
   if (!medication.times?.includes(selectedTime)) return res.status(400).json({ error: 'Geçersiz doz saati' });
 
+  // Keep de-duplication, stock mutation and persistence in one critical section.
+  await acquireStockLock(medication.id);
+  try {
   // Each scheduled dose has its own daily log.
   const existingIdx = db.data.medicationLogs.findIndex(
     l => l.medicationId === req.params.id && l.date === today && l.scheduledTime === selectedTime
@@ -131,23 +134,21 @@ router.post('/:id/log', async (req, res) => {
   }
 
   if (medication.stockTotal !== null && medication.stockTotal !== '' && Number.isFinite(Number(medication.stockTotal))) {
-    await acquireStockLock(medication.id);
-    try {
       const currentMedication = db.data.medications.find(m => m.id === medication.id);
-      if (!currentMedication) { releaseStockLock(medication.id); return; }
+      if (!currentMedication) return res.status(404).json({ error: 'Medication not found' });
       const units = Number(currentMedication.unitsPerDose) > 0 ? Number(currentMedication.unitsPerDose) : 1;
       if (becameCompleted) currentMedication.stockTotal = Math.max(0, Number(currentMedication.stockTotal) - units);
       if (becameIncomplete) currentMedication.stockTotal = Number(currentMedication.stockTotal) + units;
       medication.stockTotal = currentMedication.stockTotal;
       await db.write();
-    } finally {
-      releaseStockLock(medication.id);
-    }
   } else {
     await db.write();
   }
 
   res.status(existingIdx >= 0 ? 200 : 201).json({ ...logEntry, stockTotal: medication.stockTotal });
+  } finally {
+    releaseStockLock(medication.id);
+  }
 });
 
 // Caregiver override: get pending logs for review
@@ -193,7 +194,7 @@ router.get('/:id/logs', (req, res) => {
 });
 
 router.patch('/:id', async (req, res) => {
-  const { name, dosage, instructions, times, purpose, endDate, isActive, stockTotal } = req.body;
+  const { name, dosage, instructions, times, purpose, endDate, isActive, stockTotal, unitsPerDose } = req.body;
   const idx = db.data.medications.findIndex(m => m.id === req.params.id);
   if (idx === -1) return res.status(404).json({ error: 'İlaç bulunamadı' });
   if (!requireProfileAccess(req, res, db.data.medications[idx].profileId)) return;
@@ -217,6 +218,11 @@ router.patch('/:id', async (req, res) => {
     const parsedStock = Number(stockTotal);
     if (!Number.isFinite(parsedStock) || parsedStock < 0) return res.status(400).json({ error: 'Geçerli stok miktarı girin' });
     db.data.medications[idx].stockTotal = parsedStock;
+  }
+  if (unitsPerDose !== undefined) {
+    const parsedUnits = Number(unitsPerDose);
+    if (!Number.isFinite(parsedUnits) || parsedUnits <= 0) return res.status(400).json({ error: 'Geçerli doz adedi girin' });
+    db.data.medications[idx].unitsPerDose = parsedUnits;
   }
   await db.write();
   res.json(db.data.medications[idx]);

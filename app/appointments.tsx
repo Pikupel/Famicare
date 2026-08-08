@@ -10,6 +10,7 @@ import { useAuthStore } from '../src/stores/useAuthStore';
 import { useThemedStyles } from '../src/theme/ThemeProvider';
 import { MONTHS, WEEKDAYS, getCalendarOffset } from '../src/utils/calendar';
 import { PremiumGate } from '../src/components/PremiumGate';
+import type { Appointment } from '../src/types/models';
 
 function toLocalDate(isoDate: string) {
   if (!isoDate) return { d: '', m: '', y: '' };
@@ -27,7 +28,7 @@ export default function AppointmentsScreen() {
   const [month, setMonth] = useState(new Date().getMonth());
   const [year, setYear] = useState(new Date().getFullYear());
   const [selected, setSelected] = useState(new Date().getDate());
-  const [appointments, setAppointments] = useState<any[]>([]);
+  const [appointments, setAppointments] = useState<Appointment[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const days = Array.from({ length: new Date(year, month + 1, 0).getDate() }, (_, i) => i + 1);
@@ -40,14 +41,14 @@ export default function AppointmentsScreen() {
 
   const loadData = useCallback(async () => {
     if (!profileId) { setLoading(false); return; }
-    try { const d = await api.get<any[]>(`/appointments/profile/${profileId}`); setAppointments(d); }
+    try { const d = await api.get<Appointment[]>(`/appointments/profile/${profileId}`); setAppointments(d); }
     catch (error: any) { Alert.alert('Randevular yüklenemedi', error?.message || 'Lütfen tekrar deneyin.'); }
     setLoading(false); setRefreshing(false);
   }, [profileId]);
 
   useFocusEffect(useCallback(() => { loadData(); }, [loadData]));
 
-  const selectedAppts = appointments.filter((a: any) => {
+  const selectedAppts = appointments.filter((a) => {
     const { d, m } = toLocalDate(a.date);
     return parseInt(d) === selected && parseInt(m) === month + 1;
   });
@@ -74,11 +75,11 @@ export default function AppointmentsScreen() {
         <View style={{ flexDirection: 'row', flexWrap: 'wrap' }}>
           {Array.from({ length: getCalendarOffset(year, month) }).map((_, i) => <View key={`e-${i}`} style={{ width: '14.28%', aspectRatio: 1 }} />)}
           {days.map(day => {
-            const hasAppt = appointments.some((a: any) => { const { d, m: mo } = toLocalDate(a.date); return parseInt(d) === day && parseInt(mo) === month + 1; });
+            const hasAppt = appointments.some((a) => { const { d, m: mo } = toLocalDate(a.date); return parseInt(d) === day && parseInt(mo) === month + 1; });
             return (
               <TouchableOpacity key={day} style={[styles.day, day === selected && { backgroundColor: colors.primary }]} onPress={() => setSelected(day)}>
-                <Text style={{ ...typography.body, color: day === selected ? '#FFF' : colors.text, fontWeight: day === selected ? '700' : '400' }}>{day}</Text>
-                {hasAppt && <View style={[styles.dot, { backgroundColor: day === selected ? '#FFF' : colors.primary }]} />}
+                <Text style={{ ...typography.body, color: day === selected ? colors.onPrimary : colors.text, fontWeight: day === selected ? '700' : '400' }}>{day}</Text>
+                {hasAppt && <View style={[styles.dot, { backgroundColor: day === selected ? colors.onPrimary : colors.primary }]} />}
               </TouchableOpacity>
             );
           })}
@@ -92,7 +93,7 @@ export default function AppointmentsScreen() {
           <Text style={{ ...typography.h3, color: colors.text, marginBottom: spacing.sm }}>{selected} {MONTHS[month]} {year}</Text>
           {selectedAppts.length === 0 ? (
             <View style={{ alignItems: 'center', paddingVertical: spacing.xl }}><Text style={{ ...typography.body, color: colors.textLight }}>Bu günde randevu yok</Text></View>
-          ) : selectedAppts.map((a: any) => {
+          ) : selectedAppts.map((a) => {
             const { d, m, y } = toLocalDate(a.date);
             const formattedDate = `${d.padStart(2,'0')}.${m.padStart(2,'0')}.${y}`;
             return (
@@ -126,7 +127,7 @@ export default function AppointmentsScreen() {
         style={{ position: 'absolute', bottom: insets.bottom + 16, right: 16, width: 56, height: 56, borderRadius: 28, backgroundColor: colors.primary, alignItems: 'center', justifyContent: 'center', shadowColor: colors.primary, shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.3, shadowRadius: 6, elevation: 5 }}
         onPress={() => router.push({ pathname: '/add-appointment', params: { profileId } })}
       >
-        <Text style={{ fontSize: 28, color: '#FFF', marginTop: -2 }}>+</Text>
+        <Text style={{ fontSize: 28, color: colors.onPrimary, marginTop: -2 }}>+</Text>
       </TouchableOpacity>
       <View style={{ paddingBottom: insets.bottom }} />
       </PremiumGate>

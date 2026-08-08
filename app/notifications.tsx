@@ -38,7 +38,7 @@ export default function NotificationsScreen() {
       <View style={{ flexDirection: 'row', paddingHorizontal: spacing.lg, paddingVertical: spacing.sm, backgroundColor: colors.surface, gap: spacing.sm }}>
         {TABS.map((t, i) => (
           <TouchableOpacity key={t} style={[styles.tab, i === tab && { backgroundColor: colors.primary }]} onPress={() => setTab(i)}>
-            <Text style={{ ...typography.caption, color: i === tab ? '#FFF' : colors.textSecondary, fontWeight: i === tab ? '600' : '400' }}>{t}</Text>
+            <Text style={{ ...typography.caption, color: i === tab ? colors.onPrimary : colors.textSecondary, fontWeight: i === tab ? '600' : '400' }}>{t}</Text>
           </TouchableOpacity>
         ))}
       </View>

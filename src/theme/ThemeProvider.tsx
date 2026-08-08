@@ -6,13 +6,16 @@ const originalLightColors = { ...lightColors };
 
 const darkColors = {
   primary: '#6BD8CB',
+  onPrimary: '#003731',
   primaryLight: '#89F5E7',
   primaryContainer: '#005049',
   secondary: '#FC79BD',
+  onSecondary: '#4A0027',
   secondaryContainer: '#85145A',
   tertiary: '#3CDDC7',
   tertiaryContainer: '#005047',
   warning: '#F59E0B',
+  onWarning: '#3B2300',
   danger: '#FFB4AB',
   dangerLight: '#93000A',
   gray: '#94A3B8',

@@ -1,4 +1,5 @@
 import { useAuthStore } from '../stores/useAuthStore';
+import { clearLocalUserData } from './auth-cleanup';
 
 const configuredApiUrl = process.env.EXPO_PUBLIC_API_URL || 'https://famicare-production-f63d.up.railway.app/api/v1';
 export const BASE_URL = configuredApiUrl.replace(/\/+$/, '');
@@ -34,10 +35,12 @@ async function request<T>(method: string, path: string, body?: unknown, retried 
     });
     if (res.status === 401 && !retried && !path.startsWith('/auth/')) {
       if (await refreshAccessToken()) return request<T>(method, path, body, true);
+      await clearLocalUserData();
       useAuthStore.getState().logout();
       throw new Error('Oturum süresi doldu');
     }
     if (res.status === 401 && retried) {
+      await clearLocalUserData();
       useAuthStore.getState().logout();
       throw new Error('Oturum süresi doldu');
     }

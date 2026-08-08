@@ -12,12 +12,13 @@ import { useThemedStyles } from '../src/theme/ThemeProvider';
 export default function EditMedicationScreen() {
   const styles = useThemedStyles(baseStyles);
   const router = useRouter();
-  const { id, medName, medDosage, editTimes, medStock, medPurpose } = useLocalSearchParams();
+  const { id, medName, medDosage, editTimes, medStock, medPurpose, medUnitsPerDose } = useLocalSearchParams();
   const initialTimes = editTimes ? String(editTimes).split(',') : ['09:00'];
   const [name, setName] = useState(String(medName || ''));
   const [dosage, setDosage] = useState(String(medDosage || ''));
   const [purpose, setPurpose] = useState(String(medPurpose || ''));
   const [stockTotal, setStockTotal] = useState(String(medStock || ''));
+  const [unitsPerDose, setUnitsPerDose] = useState(String(medUnitsPerDose || '1'));
   const [times, setTimes] = useState<string[]>(initialTimes);
   const [saving, setSaving] = useState(false);
 
@@ -29,7 +30,9 @@ export default function EditMedicationScreen() {
     }
     setSaving(true);
     try {
-      await api.patch(`/medications/${id}`, { name: name.trim(), dosage, times, purpose, stockTotal: stockTotal === '' ? undefined : Number(stockTotal) });
+      const parsedUnits = Number(unitsPerDose);
+      if (!Number.isFinite(parsedUnits) || parsedUnits <= 0) throw new Error('Doz adedi sıfırdan büyük olmalıdır.');
+      await api.patch(`/medications/${id}`, { name: name.trim(), dosage, times, purpose, stockTotal: stockTotal === '' ? undefined : Number(stockTotal), unitsPerDose: parsedUnits });
       Alert.alert('Başarılı', 'İlaç güncellendi');
       router.back();
     } catch (e: any) { Alert.alert('Hata', e.message); }
@@ -74,6 +77,8 @@ export default function EditMedicationScreen() {
         <TouchableOpacity onPress={addTime} style={{ minHeight: 48, justifyContent: 'center' }}><Text style={{ ...typography.body, color: colors.primary, fontWeight: '600' }}>+ Saat Ekle</Text></TouchableOpacity>
         <Text style={styles.label}>Kalan stok / yeni kutu miktarı</Text>
         <TextInput style={styles.input} value={stockTotal} onChangeText={(value) => setStockTotal(value.replace(/\D/g, ''))} keyboardType="numeric" placeholder="Örn: 28" />
+        <Text style={styles.label}>Her kullanımda alınan adet</Text>
+        <TextInput style={styles.input} value={unitsPerDose} onChangeText={(value) => setUnitsPerDose(value.replace(/[^0-9.]/g, ''))} keyboardType="decimal-pad" placeholder="Örn: 1" />
         <Button title={saving ? 'Kaydediliyor...' : 'Kaydet'} onPress={save} disabled={saving} style={{ marginTop: spacing.xl }} />
         <TouchableOpacity style={styles.deleteBtn} onPress={handleDelete}><Text style={{ ...typography.button, color: colors.danger }}>İlacı Sil</Text></TouchableOpacity>
       </ScrollView>

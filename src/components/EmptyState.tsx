@@ -34,5 +34,5 @@ const baseStyles = StyleSheet.create({
   title: { ...typography.h3, color: colors.textSecondary, textAlign: 'center', marginBottom: spacing.xs },
   description: { ...typography.body, color: colors.textLight, textAlign: 'center', lineHeight: 24, marginBottom: spacing.lg },
   button: { backgroundColor: colors.primary, borderRadius: borderRadius.button, paddingHorizontal: 24, paddingVertical: 14, minHeight: 48, justifyContent: 'center' },
-  buttonText: { ...typography.button, color: '#FFFFFF' },
+  buttonText: { ...typography.button, color: colors.onPrimary },
 });

@@ -81,8 +81,8 @@ export default function AddAppointmentScreen() {
       <View style={{ padding: spacing.lg }}>
         <TouchableOpacity style={styles.mhrsBtn} onPress={() => Linking.openURL('https://mhrs.gov.tr/vatandas/#/')}>
           <Text style={{ fontSize: 20, marginRight: spacing.sm }}>🏥</Text>
-          <View><Text style={{ ...typography.button, color: '#FFF' }}>MHRS'de Randevu Al</Text>
-          <Text style={{ ...typography.small, color: 'rgba(255,255,255,0.7)' }}>MHRS'e gidin, randevunuzu alın, sonra takviminize ekleyin</Text></View>
+          <View><Text style={{ ...typography.button, color: colors.onPrimary }}>MHRS'de Randevu Al</Text>
+          <Text style={{ ...typography.small, color: colors.onPrimary, opacity: 0.7 }}>MHRS'e gidin, randevunuzu alın, sonra takviminize ekleyin</Text></View>
         </TouchableOpacity>
 
         <Text style={styles.label}>Randevu Başlığı</Text>

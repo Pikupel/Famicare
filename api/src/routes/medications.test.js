@@ -44,6 +44,8 @@ test('linked patient user id resolves to the shared profile', async () => {
 });
 
 test('taking the same dose twice decrements stock only once', async () => {
+  db.data.medications[0].stockTotal = 10;
+  db.data.medicationLogs = [];
   const token = generateToken(db.data.users[0]);
   const first = await request(app)
     .post('/api/v1/medications/med-1/log')
@@ -57,4 +59,34 @@ test('taking the same dose twice decrements stock only once', async () => {
   assert.equal(second.status, 200);
   assert.equal(db.data.medications[0].stockTotal, 9);
   assert.equal(db.data.medicationLogs.length, 1);
+});
+
+test('concurrent requests create one dose log and decrement stock once', async () => {
+  db.data.medications[0].stockTotal = 10;
+  db.data.medicationLogs = [];
+  const token = generateToken(db.data.users[0]);
+  const makeRequest = () => request(app)
+    .post('/api/v1/medications/med-1/log')
+    .set('Authorization', `Bearer ${token}`)
+    .send({ status: 'taken', scheduledTime: '09:00' });
+  const [first, second] = await Promise.all([makeRequest(), makeRequest()]);
+  assert.deepEqual([first.status, second.status].sort(), [200, 201]);
+  assert.equal(db.data.medications[0].stockTotal, 9);
+  assert.equal(db.data.medicationLogs.length, 1);
+});
+
+test('units per dose can be updated with validation', async () => {
+  const token = generateToken(db.data.users[0]);
+  const updated = await request(app)
+    .patch('/api/v1/medications/med-1')
+    .set('Authorization', `Bearer ${token}`)
+    .send({ unitsPerDose: 2 });
+  assert.equal(updated.status, 200);
+  assert.equal(updated.body.unitsPerDose, 2);
+  const rejected = await request(app)
+    .patch('/api/v1/medications/med-1')
+    .set('Authorization', `Bearer ${token}`)
+    .send({ unitsPerDose: 0 });
+  assert.equal(rejected.status, 400);
+  assert.equal(db.data.medications[0].unitsPerDose, 2);
 });

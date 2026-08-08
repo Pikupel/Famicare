@@ -1,18 +1,13 @@
 import { Router } from 'express';
 import bcrypt from 'bcryptjs';
-import { db, uuid, deleteRelationalData, pgPool } from '../db.js';
+import { db, uuid, mutateAndPersistDeletion, pgPool } from '../db.js';
 import { removeUserFromState } from '../services/user-deletion.js';
 import { createSession, rotateSession, revokeSession, revokeUserSessions } from '../services/sessions.js';
 import { requestPhoneVerification, consumePhoneVerification } from '../services/phone-verification.js';
+import { isUnsafeRegistrationAllowed } from '../utils/environment.js';
 
 const router = Router();
-const isUnverifiedRegistrationEnabled = () => {
-  if (process.env.ALLOW_UNVERIFIED_REGISTRATION === 'true' && process.env.NODE_ENV === 'production') {
-    console.error('[SECURITY] ALLOW_UNVERIFIED_REGISTRATION=true üretimde kullanılamaz. Zorla devre dışı bırakıldı.');
-    return false;
-  }
-  return process.env.ALLOW_UNVERIFIED_REGISTRATION === 'true';
-};
+const isUnverifiedRegistrationEnabled = isUnsafeRegistrationAllowed;
 
 const verificationAttempts = new Map();
 function checkVerificationRate(req, res) {
@@ -157,10 +152,12 @@ router.post('/delete-account', async (req, res) => {
     }
     return res.status(401).json({ error: 'Telefon veya PIN hatalı' });
   }
-  const deletion = removeUserFromState(user.id);
-  revokeUserSessions(user.id);
-  await db.write();
-  await deleteRelationalData({ userIds: [user.id], profileIds: deletion.profileIds });
+  await mutateAndPersistDeletion(() => {
+    const deletion = removeUserFromState(user.id);
+    if (!deletion) return null;
+    revokeUserSessions(user.id);
+    return { ...deletion, userIds: [user.id], profileIds: deletion.profileIds };
+  });
   res.json({ success: true });
 });
 

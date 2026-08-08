@@ -1,17 +1,29 @@
 import { Router } from 'express';
 import bcrypt from 'bcryptjs';
-import { db, deleteRelationalData, pgPool } from '../db.js';
+import { db, mutateAndPersistDeletion, pgPool } from '../db.js';
 import { authMiddleware } from '../middleware/auth.js';
 import { removeUserFromState } from '../services/user-deletion.js';
 import { revokeUserSessions } from '../services/sessions.js';
+import { syncRevenueCatSubscription } from '../services/revenuecat.js';
 
 const router = Router();
 router.use(authMiddleware);
 
+function publicUser(user) {
+  const {
+    pinHash: ignoredPinHash,
+    fcmToken: ignoredPushToken,
+    failedLoginAttempts: ignoredFailures,
+    loginBlockedUntil: ignoredBlockedUntil,
+    ...safeUser
+  } = user;
+  return safeUser;
+}
+
 router.get('/', (req, res) => {
   const user = db.data.users.find(u => u.id === req.user.id);
   if (!user) return res.status(404).json({ error: 'Kullanıcı bulunamadı' });
-  res.json(user);
+  res.json(publicUser(user));
 });
 
 router.patch('/', async (req, res) => {
@@ -21,18 +33,17 @@ router.patch('/', async (req, res) => {
   if (name) db.data.users[idx].name = name;
   if (fcmToken !== undefined) db.data.users[idx].fcmToken = fcmToken || null;
   await db.write();
-  res.json(db.data.users[idx]);
+  res.json(publicUser(db.data.users[idx]));
 });
 
-router.patch('/subscription', async (req, res) => {
-  const { isSubscribed, productId, expiresAt } = req.body;
-  const idx = db.data.users.findIndex(u => u.id === req.user.id);
-  if (idx === -1) return res.status(404).json({ error: 'Kullanıcı bulunamadı' });
-  db.data.users[idx].subscription = isSubscribed ? 'premium' : null;
-  db.data.users[idx].subscriptionProductId = productId || null;
-  db.data.users[idx].subscriptionExpiresAt = expiresAt || null;
-  await db.write();
-  res.json({ success: true, subscription: db.data.users[idx].subscription });
+router.post('/subscription/sync', async (req, res) => {
+  try {
+    const subscription = await syncRevenueCatSubscription(req.user.id);
+    if (!subscription) return res.status(404).json({ error: 'Kullanıcı bulunamadı' });
+    res.json(subscription);
+  } catch (error) {
+    res.status(503).json({ error: error.message || 'Abonelik doğrulanamadı' });
+  }
 });
 
 router.delete('/', async (req, res) => {
@@ -41,10 +52,12 @@ router.delete('/', async (req, res) => {
   const user = db.data.users.find(item => item.id === req.user.id);
   if (!user) return res.status(404).json({ error: 'Kullanıcı bulunamadı' });
   if (!await bcrypt.compare(String(req.body?.pin || ''), user.pinHash || '')) return res.status(401).json({ error: 'PIN hatalı' });
-  const deletion = removeUserFromState(user.id);
-  revokeUserSessions(user.id);
-  await db.write();
-  await deleteRelationalData({ userIds: [user.id], profileIds: deletion.profileIds });
+  await mutateAndPersistDeletion(() => {
+    const deletion = removeUserFromState(user.id);
+    if (!deletion) return null;
+    revokeUserSessions(user.id);
+    return { ...deletion, userIds: [user.id], profileIds: deletion.profileIds };
+  });
   res.json({ success: true });
 });
 

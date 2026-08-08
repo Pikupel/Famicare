@@ -53,7 +53,7 @@ export default function EditProfileScreen() {
         <View style={{ flexDirection: 'row', gap: spacing.sm, marginBottom: spacing.md }}>
           {['A Rh+', 'A Rh-', 'B Rh+', 'B Rh-', 'AB Rh+', 'AB Rh-', '0 Rh+', '0 Rh-'].map(t => (
             <TouchableOpacity key={t} style={[styles.pill, bloodType === t && { backgroundColor: colors.primary }]} onPress={() => setBloodType(t)}>
-              <Text style={{ color: bloodType === t ? '#FFF' : colors.text, fontSize: 12, fontWeight: '600' }}>{t}</Text>
+              <Text style={{ color: bloodType === t ? colors.onPrimary : colors.text, fontSize: 12, fontWeight: '600' }}>{t}</Text>
             </TouchableOpacity>
           ))}
         </View>

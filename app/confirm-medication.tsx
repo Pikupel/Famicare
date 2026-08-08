@@ -18,19 +18,28 @@ export default function ConfirmMedicationScreen() {
     if (undoTimer) clearTimeout(undoTimer);
   }, [undoTimer]);
 
+  const persistAction = async (action: 'taken' | 'postponed') => {
+    setConfirmed(action);
+    try {
+      await api.post(`/medications/${id}/log`, { status: action, scheduledTime: String(time || '') });
+      if (action === 'taken') await cancelDoseFollowups(String(id), String(time || ''));
+      else await schedulePostponedReminder(String(id), String(name || 'İlaç'), String(time || ''));
+      Alert.alert(action === 'taken' ? '✅ Kaydedildi' : '⏰ Ertelendi', action === 'taken' ? 'İlaç alındı olarak işaretlendi.' : '15 dk sonra tekrar hatırlatılacak.');
+      router.back();
+    } catch (error) {
+      setConfirmed(null);
+      setUndoTimer(null);
+      Alert.alert('Kaydedilemedi', error instanceof Error ? error.message : 'Bağlantınızı kontrol edip tekrar deneyin.', [
+        { text: 'Vazgeç', style: 'cancel' },
+        { text: 'Tekrar Dene', onPress: () => void persistAction(action) },
+      ]);
+    }
+  };
+
   const handleAction = async (action: 'taken' | 'postponed') => {
     if (confirmed || !id || !time) return;
     setConfirmed(action);
-    const timer = setTimeout(async () => {
-      try {
-        await api.post(`/medications/${id}/log`, { status: action, scheduledTime: String(time || '') });
-        if (action === 'taken') await cancelDoseFollowups(String(id), String(time || ''));
-        else await schedulePostponedReminder(String(id), String(name || 'İlaç'), String(time || ''));
-        Alert.alert(action === 'taken' ? '✅ Kaydedildi' : '⏰ Ertelendi', action === 'taken' ? 'İlaç alındı olarak işaretlendi.' : '15 dk sonra tekrar hatırlatılacak.');
-        router.back();
-      } catch { Alert.alert('Hata', 'Kaydedilemedi'); }
-      setConfirmed(null);
-    }, 5000);
+    const timer = setTimeout(() => void persistAction(action), 5000);
     setUndoTimer(timer);
   };
 
@@ -53,12 +62,12 @@ export default function ConfirmMedicationScreen() {
 
         {confirmed ? (
           <TouchableOpacity style={styles.undoBtn} onPress={handleUndo}>
-            <Text style={{ ...typography.button, color: '#FFFFFF' }}>↩ GERİ AL (5sn)</Text>
+            <Text style={{ ...typography.button, color: colors.onWarning }}>↩ GERİ AL (5sn)</Text>
           </TouchableOpacity>
         ) : (
           <>
             <TouchableOpacity style={styles.takenBtn} onPress={() => handleAction('taken')}>
-              <Text style={{ ...typography.h2, color: '#FFFFFF' }}>✅ ALDIM</Text>
+              <Text style={{ ...typography.h2, color: colors.onSecondary }}>✅ ALDIM</Text>
             </TouchableOpacity>
             <TouchableOpacity style={styles.postponeBtn} onPress={() => handleAction('postponed')}>
               <Text style={{ ...typography.button, color: colors.text }}>⏰ HENÜZ ALMADIM</Text>

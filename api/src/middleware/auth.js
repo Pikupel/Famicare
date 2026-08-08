@@ -1,10 +1,11 @@
 import jwt from 'jsonwebtoken';
 import { db } from '../db.js';
 import { randomBytes } from 'crypto';
+import { isProductionRuntime } from '../utils/environment.js';
 
 const JWT_SECRET = process.env.JWT_SECRET;
 
-if (!JWT_SECRET && process.env.NODE_ENV === 'production') {
+if (!JWT_SECRET && isProductionRuntime()) {
   throw new Error('JWT_SECRET üretim ortamında zorunludur');
 }
 const effectiveSecret = JWT_SECRET || (console.warn('[AUTH] JWT_SECRET tanımlanmamış, geçici rastgele secret kullanılıyor. Yeniden başlatmada tüm token\'lar geçersiz olur.'), randomBytes(48).toString('base64url'));
@@ -27,7 +28,7 @@ export function authMiddleware(req, res, next) {
     const payload = jwt.verify(token, effectiveSecret);
     const user = db.data.users.find(item => item.id === payload.id);
     if (!user) return res.status(401).json({ error: 'Hesap artık aktif değil' });
-    if (process.env.NODE_ENV === 'production' && !payload.sid) {
+    if (isProductionRuntime() && !payload.sid) {
       return res.status(401).json({ error: 'Güvenli oturum için yeniden giriş yapın' });
     }
     if (payload.sid && !db.data.authSessions?.some(session => session.id === payload.sid && session.userId === user.id && !session.revokedAt)) {

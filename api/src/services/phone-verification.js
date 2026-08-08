@@ -1,5 +1,6 @@
 import { createHash, randomInt } from 'crypto';
 import { db, uuid } from '../db.js';
+import { isProductionRuntime } from '../utils/environment.js';
 
 const hash = value => createHash('sha256').update(String(value)).digest('hex');
 const TTL_MS = 10 * 60 * 1000;
@@ -33,7 +34,7 @@ export async function requestPhoneVerification(phone) {
     await db.write();
     throw error;
   }
-  return { verificationId: verification.id, expiresIn: TTL_MS / 1000, devCode: process.env.NODE_ENV === 'production' ? undefined : code };
+  return { verificationId: verification.id, expiresIn: TTL_MS / 1000, devCode: isProductionRuntime() ? undefined : code };
 }
 
 export async function consumePhoneVerification(id, phone, code) {
@@ -52,7 +53,7 @@ export async function consumePhoneVerification(id, phone, code) {
 async function sendSms(phone, message) {
   const endpoint = process.env.SMS_WEBHOOK_URL;
   if (!endpoint) {
-    if (process.env.NODE_ENV === 'production') throw new Error('SMS sağlayıcısı yapılandırılmamış');
+    if (isProductionRuntime()) throw new Error('SMS sağlayıcısı yapılandırılmamış');
     console.log(`[DEV SMS] ${phone}: ${message}`);
     return;
   }

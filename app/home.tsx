@@ -13,6 +13,7 @@ import { BottomNav } from '../src/components/BottomNav';
 import { SOSButton } from '../src/components/SOSButton';
 import { cacheData, getCachedData } from '../src/services/cache';
 import { useThemedStyles } from '../src/theme/ThemeProvider';
+import type { Medication, MedicationLog } from '../src/types/models';
 
 
 function isTimePassed(timeStr: string | undefined): boolean {
@@ -33,14 +34,15 @@ export default function HomeScreen() {
   const router = useRouter();
   const userName = useAuthStore((s) => s.userName);
   const userId = useAuthStore((s) => s.userId);
-  const [medications, setMedications] = useState<any[]>([]);
-  const [todayLogs, setTodayLogs] = useState<any[]>([]);
+  const [medications, setMedications] = useState<Medication[]>([]);
+  const [todayLogs, setTodayLogs] = useState<MedicationLog[]>([]);
   const [loading, setLoading] = useState(true);
+  const [showingCachedData, setShowingCachedData] = useState(false);
   useFocusEffect(useCallback(() => {
     if (!userId) { setLoading(false); return; }
     (async () => {
       const cacheKey = `medications:${userId}`;
-      getCachedData<{ medications: any[]; logs: any[] }>(cacheKey).then(cached => {
+      getCachedData<{ medications: Medication[]; logs: MedicationLog[] }>(cacheKey).then(cached => {
         if (cached) {
           setMedications(cached.data.medications);
           setTodayLogs(cached.data.logs);
@@ -48,15 +50,17 @@ export default function HomeScreen() {
       });
       setLoading(true);
       try {
-        const data = await api.get<{ medications: any[]; logs: any[] }>(`/medications/profile/${userId}/today`);
+        const data = await api.get<{ medications: Medication[]; logs: MedicationLog[] }>(`/medications/profile/${userId}/today`);
         setMedications(data.medications);
         setTodayLogs(data.logs);
+        setShowingCachedData(false);
         void cacheData(cacheKey, data);
         await setupNotifications();
         await syncMedicationReminders(data.medications);
       } catch {
         const cached = await getCachedData(cacheKey);
-        if (!cached) Alert.alert('Bağlantı Hatası', 'Sunucuya erişilemiyor.');
+        if (cached) setShowingCachedData(true);
+        else Alert.alert('Bağlantı Hatası', 'Sunucuya erişilemiyor.');
       }
       setLoading(false);
     })();
@@ -67,7 +71,7 @@ export default function HomeScreen() {
       .filter(log => ['taken', 'caregiver_marked'].includes(log.status))
       .map(log => `${log.medicationId}-${log.scheduledTime}`)
   );
-  const pendingDoses = medications.flatMap((medication: any) =>
+  const pendingDoses = medications.flatMap((medication) =>
     (medication.times || [])
       .filter((time: string) => !completedDoseKeys.has(`${medication.id}-${time}`))
       .map((time: string) => ({ medication, time }))
@@ -92,9 +96,14 @@ export default function HomeScreen() {
       </View>
 
       <ScrollView style={{ flex: 1, paddingTop: spacing.md }} showsVerticalScrollIndicator={false}>
+        {showingCachedData && (
+          <View style={{ backgroundColor: colors.warning, borderRadius: borderRadius.card, padding: spacing.sm, marginHorizontal: spacing.lg, marginBottom: spacing.sm }}>
+            <Text style={{ ...typography.caption, color: colors.onWarning, textAlign: 'center' }}>Çevrimdışısınız; son kaydedilen bilgiler gösteriliyor.</Text>
+          </View>
+        )}
         <View style={{ backgroundColor: colors.primary, borderRadius: borderRadius.card, padding: 20, marginHorizontal: spacing.lg, marginBottom: spacing.md }}>
-          <Text style={{ ...typography.h3, color: '#FFFFFF', marginBottom: spacing.xs }}>Ailemle Sağlık</Text>
-          <Text style={{ ...typography.body, color: 'rgba(255,255,255,0.8)' }}>Sevdiklerinizin sağlığını birlikte takip edin.</Text>
+          <Text style={{ ...typography.h3, color: colors.onPrimary, marginBottom: spacing.xs }}>Ailemle Sağlık</Text>
+          <Text style={{ ...typography.body, color: colors.onPrimary, opacity: 0.8 }}>Sevdiklerinizin sağlığını birlikte takip edin.</Text>
         </View>
         <View style={[styles.card, shadow.card]}>
           <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: spacing.sm }}>

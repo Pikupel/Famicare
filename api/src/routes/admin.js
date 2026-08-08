@@ -1,5 +1,5 @@
 import { Router } from 'express';
-import { db, uuid, pgPool, deleteRelationalData } from '../db.js';
+import { db, uuid, pgPool, mutateAndPersistDeletion, persistDrugCatalog, createDrugCatalogBackup, restoreDrugCatalogBackup } from '../db.js';
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
 import { timingSafeEqual, randomBytes } from 'crypto';
@@ -7,13 +7,15 @@ import { verify as verifyTotp, generateSecret } from 'otplib';
 import { createTitckPreview, consumeTitckPreview } from '../services/titck-import.js';
 import { removeUserFromState } from '../services/user-deletion.js';
 import { revokeUserSessions } from '../services/sessions.js';
+import { findActiveDrugs } from '../utils/drug-search.js';
+import { isProductionRuntime } from '../utils/environment.js';
 
 const router = Router();
 const ADMIN_USERNAME = process.env.ADMIN_USERNAME;
 const ADMIN_PASSWORD_HASH = process.env.ADMIN_PASSWORD_HASH;
 const ADMIN_TOTP_SECRET = process.env.ADMIN_TOTP_SECRET;
 const ADMIN_SESSION_SECRET = process.env.ADMIN_SESSION_SECRET;
-if (process.env.NODE_ENV === 'production' && (!ADMIN_USERNAME || !ADMIN_PASSWORD_HASH || !ADMIN_TOTP_SECRET || !ADMIN_SESSION_SECRET)) {
+if (isProductionRuntime() && (!ADMIN_USERNAME || !ADMIN_PASSWORD_HASH || !ADMIN_TOTP_SECRET || !ADMIN_SESSION_SECRET)) {
   throw new Error('ADMIN_USERNAME, ADMIN_PASSWORD_HASH, ADMIN_TOTP_SECRET ve ADMIN_SESSION_SECRET üretim ortamında zorunludur');
 }
 if (!ADMIN_TOTP_SECRET && !ADMIN_SESSION_SECRET) {
@@ -24,6 +26,15 @@ const effectiveAdminPasswordHash = ADMIN_PASSWORD_HASH || (() => { throw new Err
 const effectiveAdminTotpSecret = ADMIN_TOTP_SECRET || generateTotpFallback();
 const adminSessionSecret = ADMIN_SESSION_SECRET || randomBytes(48).toString('base64url');
 const adminLoginAttempts = new Map();
+let lastAttemptCleanup = 0;
+
+function cleanupLoginAttempts(now = Date.now()) {
+  if (now - lastAttemptCleanup < 60_000) return;
+  lastAttemptCleanup = now;
+  for (const [key, value] of adminLoginAttempts) {
+    if (!value.blockedUntil || value.blockedUntil <= now) adminLoginAttempts.delete(key);
+  }
+}
 
 function sameSecret(candidate, expected) {
   const left = Buffer.from(String(candidate || ''));
@@ -42,11 +53,7 @@ function generateTotpFallback() {
 }
 
 router.post('/session', async (req, res) => {
-  if (adminLoginAttempts.size > 10_000) {
-    for (const [key, value] of adminLoginAttempts) {
-      if (!value.blockedUntil || value.blockedUntil <= Date.now()) adminLoginAttempts.delete(key);
-    }
-  }
+  cleanupLoginAttempts();
   const identifier = req.ip || req.socket.remoteAddress || 'unknown';
   const attempt = adminLoginAttempts.get(identifier);
   if (attempt?.blockedUntil > Date.now()) {
@@ -147,11 +154,7 @@ router.get('/medications', (req, res) => {
 });
 
 router.get('/drugs/search', (req, res) => {
-  const query = String(req.query.q || '').trim().toLocaleLowerCase('tr-TR');
-  if (query.length < 2) return res.json([]);
-  res.json((db.data.drugReferences || [])
-    .filter(drug => drug.durum !== 'pasif' && drug.ilac_adi?.toLocaleLowerCase('tr-TR').includes(query))
-    .slice(0, 50)
+  res.json(findActiveDrugs(db.data.drugReferences, req.query.q, 50)
     .map(drug => ({
       ilac_adi: drug.ilac_adi, barkod: drug.barkod,
       atc_kodu: drug.atc_kodu, atc_adi: drug.atc_adi, durum: drug.durum,
@@ -175,9 +178,11 @@ router.post('/titck/apply', async (req, res) => {
   if (!requireConfirmation(req, res, 'TİTCK LİSTESİNİ GÜNCELLE')) return;
   try {
     const preview = consumeTitckPreview(req.body?.previewToken);
+    const backupId = uuid();
+    await createDrugCatalogBackup(backupId);
     const backup = {
-      id: uuid(), createdAt: new Date().toISOString(),
-      data: { drugReferences: structuredClone(db.data.drugReferences || []), lastImportDate: db.data.lastImportDate },
+      id: backupId, createdAt: new Date().toISOString(), kind: 'drug-catalog',
+      data: { lastImportDate: db.data.lastImportDate },
     };
     db.data.adminBackups = [backup, ...(db.data.adminBackups || [])].slice(0, 3);
     db.data.drugReferences = preview.products;
@@ -185,6 +190,7 @@ router.post('/titck/apply', async (req, res) => {
     db.data.lastTitckImport = {
       sourceUrl: preview.sourceUrl, checksum: preview.checksum, importedAt: db.data.lastImportDate,
     };
+    await persistDrugCatalog();
     await db.write();
     await recordAudit(req, 'drugs.titck-apply', 'drugReferences', null, {
       sourceUrl: preview.sourceUrl, checksum: preview.checksum, ...preview.summary,
@@ -205,10 +211,11 @@ router.delete('/users/:id', async (req, res) => {
   if (!requireConfirmation(req, res, 'KULLANICIYI SİL')) return;
   if (!requirePersistentDatabase(req, res)) return;
   const uid = req.params.id;
-  const deletion = removeUserFromState(uid);
+  const deletion = await mutateAndPersistDeletion(() => {
+    const result = removeUserFromState(uid);
+    return result ? { ...result, userIds: [uid], profileIds: result.profileIds } : null;
+  });
   if (!deletion) return res.status(404).json({ error: 'Kullanıcı bulunamadı' });
-  await db.write();
-  await deleteRelationalData({ userIds: [uid], profileIds: deletion.profileIds });
   await recordAudit(req, 'user.delete', 'user', uid, { name: deletion.user.name });
   res.json({ success: true, deletedName: deletion.user.name });
 });
@@ -245,14 +252,15 @@ router.delete('/profiles/:id', async (req, res) => {
   const profile = db.data.profiles.find(p => p.id === req.params.id);
   if (!profile) return res.status(404).json({ error: 'Profil bulunamadı' });
   const pid = req.params.id;
-  db.data.profiles = db.data.profiles.filter(p => p.id !== pid);
-  db.data.medications = db.data.medications.filter(m => m.profileId !== pid);
-  db.data.medicationLogs = db.data.medicationLogs.filter(l => l.profileId !== pid);
-  db.data.appointments = db.data.appointments.filter(a => a.profileId !== pid);
-  db.data.healthRecords = db.data.healthRecords.filter(r => r.profileId !== pid);
-  db.data.emergencies = db.data.emergencies.filter(e => e.profileId !== pid);
-  await db.write();
-  await deleteRelationalData({ profileIds: [pid] });
+  await mutateAndPersistDeletion(() => {
+    db.data.profiles = db.data.profiles.filter(p => p.id !== pid);
+    db.data.medications = db.data.medications.filter(m => m.profileId !== pid);
+    db.data.medicationLogs = db.data.medicationLogs.filter(l => l.profileId !== pid);
+    db.data.appointments = db.data.appointments.filter(a => a.profileId !== pid);
+    db.data.healthRecords = db.data.healthRecords.filter(r => r.profileId !== pid);
+    db.data.emergencies = db.data.emergencies.filter(e => e.profileId !== pid);
+    return { profileIds: [pid] };
+  });
   await recordAudit(req, 'profile.delete', 'profile', pid, { name: profile.name });
   res.json({ success: true, deletedName: profile.name });
 });
@@ -273,24 +281,26 @@ router.post('/test-push', async (req, res) => {
 router.post('/clear-all', async (req, res) => {
   if (!requireConfirmation(req, res, 'TÜM VERİYİ SİL')) return;
   if (!requirePersistentDatabase(req, res)) return;
-  const { adminBackups = [], adminAuditLogs = [], authSessions: ignoredSessions, pushDeliveries: ignoredPushDeliveries, ...backupData } = db.data;
-  const backup = { id: uuid(), createdAt: new Date().toISOString(), data: structuredClone(backupData) };
-  db.data.adminBackups = [backup, ...adminBackups].slice(0, 3);
-  db.data.users = [];
-  db.data.profiles = [];
-  db.data.medications = [];
-  db.data.medicationLogs = [];
-  db.data.appointments = [];
-  db.data.healthRecords = [];
-  db.data.notifications = [];
-  db.data.emergencies = [];
-  db.data.emergencyContacts = [];
-  db.data.inviteAttempts = {};
-  db.data.authSessions = [];
-  db.data.pushDeliveries = [];
-  db.data.phoneVerifications = [];
-  await db.write();
-  await deleteRelationalData({ clearAll: true });
+  let backup;
+  await mutateAndPersistDeletion(() => {
+    const { drugReferences: ignoredCatalog, adminBackups = [], adminAuditLogs: ignoredAuditLogs, authSessions: ignoredSessions, pushDeliveries: ignoredPushDeliveries, ...backupData } = db.data;
+    backup = { id: uuid(), createdAt: new Date().toISOString(), data: structuredClone(backupData) };
+    db.data.adminBackups = [backup, ...adminBackups].slice(0, 3);
+    db.data.users = [];
+    db.data.profiles = [];
+    db.data.medications = [];
+    db.data.medicationLogs = [];
+    db.data.appointments = [];
+    db.data.healthRecords = [];
+    db.data.notifications = [];
+    db.data.emergencies = [];
+    db.data.emergencyContacts = [];
+    db.data.inviteAttempts = {};
+    db.data.authSessions = [];
+    db.data.pushDeliveries = [];
+    db.data.phoneVerifications = [];
+    return { clearAll: true };
+  });
   await recordAudit(req, 'database.clear-all', 'database', 'primary', { backupId: backup.id });
   res.json({ success: true, message: 'Tüm veriler temizlendi' });
 });
@@ -305,7 +315,11 @@ router.post('/backups/:id/restore', async (req, res) => {
   if (!backup) return res.status(404).json({ error: 'Yedek bulunamadı' });
   const backups = db.data.adminBackups;
   const auditLogs = db.data.adminAuditLogs;
+  if (backup.kind === 'drug-catalog' && !await restoreDrugCatalogBackup(backup.id)) {
+    return res.status(410).json({ error: 'İlaç kataloğu yedek verisi artık mevcut değil' });
+  }
   db.data = { ...db.data, ...structuredClone(backup.data), authSessions: [], pushDeliveries: [], adminBackups: backups, adminAuditLogs: auditLogs };
+  if (backup.data.drugReferences) await persistDrugCatalog();
   await db.write();
   await recordAudit(req, 'database.restore', 'backup', backup.id);
   res.json({ success: true });

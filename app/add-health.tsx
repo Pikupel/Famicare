@@ -74,7 +74,7 @@ export default function AddHealthScreen() {
           {(['blood_pressure', 'blood_sugar', 'weight'] as MeasureType[]).map((t) => (
             <TouchableOpacity key={t} style={[styles.typeBtn, type === t && styles.typeActive]} onPress={() => setType(t)}>
               <Text style={{ fontSize: 20, marginBottom: 4 }}>{t === 'blood_pressure' ? '❤️' : t === 'blood_sugar' ? '🩸' : '⚖️'}</Text>
-              <Text style={{ ...typography.small, color: type === t ? '#FFF' : colors.textSecondary }}>{t === 'blood_pressure' ? 'Tansiyon' : t === 'blood_sugar' ? 'Şeker' : 'Kilo'}</Text>
+              <Text style={{ ...typography.small, color: type === t ? colors.onPrimary : colors.textSecondary }}>{t === 'blood_pressure' ? 'Tansiyon' : t === 'blood_sugar' ? 'Şeker' : 'Kilo'}</Text>
             </TouchableOpacity>
           ))}
         </View>

@@ -11,7 +11,7 @@ import { useSubscriptionStore } from '../src/stores/useSubscriptionStore';
 import { BottomNav } from '../src/components/BottomNav';
 import { api } from '../src/services/api';
 import { useTheme, useThemedStyles } from '../src/theme/ThemeProvider';
-import { clearAllMedicationReminders } from '../src/services/notifications';
+import { clearLocalUserData } from '../src/services/auth-cleanup';
 
 const AVATAR_EMOJI: Record<string, string> = {
   elderly_woman: '👵', elderly_man: '👴', elderly_hijabi: '🧕',
@@ -187,7 +187,7 @@ export default function ProfileScreen() {
             </TouchableOpacity>
             <TouchableOpacity style={styles.logoutBtn} onPress={async () => {
               if (refreshToken) await api.post('/auth/logout', { refreshToken }).catch((e: any) => { if (e?.status !== 401) Alert.alert('Uyarı', 'Oturum sunucuda kapatılamadı. Yeniden giriş yapmanız gerekebilir.'); });
-              await clearAllMedicationReminders();
+              await clearLocalUserData();
               logout();
               router.replace('/welcome');
             }}>

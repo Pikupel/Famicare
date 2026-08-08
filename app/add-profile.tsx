@@ -47,7 +47,7 @@ export default function AddProfileScreen() {
         <View style={{ flexDirection: 'row', gap: spacing.sm, marginBottom: spacing.md }}>
           {['aile', 'anne', 'baba', 'eş'].map((opt) => (
             <TouchableOpacity key={opt} style={[styles.option, relationship === opt && styles.optionActive]} onPress={() => setRelationship(opt)}>
-              <Text style={{ ...typography.body, color: relationship === opt ? '#FFF' : colors.text }}>{opt.charAt(0).toUpperCase() + opt.slice(1)}</Text>
+              <Text style={{ ...typography.body, color: relationship === opt ? colors.onPrimary : colors.text }}>{opt.charAt(0).toUpperCase() + opt.slice(1)}</Text>
             </TouchableOpacity>
           ))}
         </View>

@@ -10,6 +10,7 @@ import { useAuthStore } from '../src/stores/useAuthStore';
 import { EmptyState } from '../src/components/EmptyState';
 import { isAbnormalValue } from '../src/theme/health-thresholds';
 import { useThemedStyles } from '../src/theme/ThemeProvider';
+import type { HealthRecord } from '../src/types/models';
 
 const TABS = ['Tansiyon', 'Şeker', 'Kilo'];
 const RANGES = ['1 Hafta', '1 Ay', '3 Ay'];
@@ -23,14 +24,14 @@ export default function HealthScreen() {
   const profileId = String(params.profileId || userId || '');
   const [tab, setTab] = useState(0);
   const [rangeIndex, setRangeIndex] = useState(0);
-  const [records, setRecords] = useState<any[]>([]);
+  const [records, setRecords] = useState<HealthRecord[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
 
   const loadData = useCallback(async () => {
     if (!profileId) { setLoading(false); return; }
     try {
-      const data = await api.get<any[]>(`/health/profile/${profileId}`);
+      const data = await api.get<HealthRecord[]>(`/health/profile/${profileId}`);
       setRecords(data);
     } catch (error: any) {
       Alert.alert('Sağlık verileri yüklenemedi', error?.message || 'Lütfen tekrar deneyin.');
@@ -48,7 +49,7 @@ export default function HealthScreen() {
   const filtered = records.filter(r => r.recordType === types[tab] && new Date(r.measuredAt) >= cutoff);
   const lastRecord = filtered[0];
 
-  const valueDisplay = (r: any) => {
+  const valueDisplay = (r: HealthRecord) => {
     if (r.recordType === 'blood_pressure') return `${r.valueData?.systolic || '?'}/${r.valueData?.diastolic || '?'}`;
     if (r.recordType === 'blood_sugar') return `${r.valueData?.sugar || '?'}`;
     return `${r.valueData?.weight || '?'}`;
@@ -85,7 +86,7 @@ export default function HealthScreen() {
       <View style={{ flexDirection: 'row', paddingHorizontal: spacing.lg, paddingVertical: spacing.sm, gap: spacing.sm }}>
         {TABS.map((t, i) => (
           <TouchableOpacity key={t} style={[styles.tab, i === tab && { backgroundColor: colors.primary }]} onPress={() => setTab(i)}>
-            <Text style={{ ...typography.caption, color: i === tab ? '#FFF' : colors.textSecondary, fontWeight: i === tab ? '600' : '400' }}>{t}</Text>
+            <Text style={{ ...typography.caption, color: i === tab ? colors.onPrimary : colors.textSecondary, fontWeight: i === tab ? '600' : '400' }}>{t}</Text>
           </TouchableOpacity>
         ))}
       </View>
@@ -143,7 +144,7 @@ export default function HealthScreen() {
           </View>
 
           <Text style={{ ...typography.h3, color: colors.text, marginTop: spacing.lg, marginBottom: spacing.sm }}>Geçmiş Ölçümler</Text>
-          {filtered.slice(0, 10).map((r: any) => (
+          {filtered.slice(0, 10).map((r) => (
             <TouchableOpacity key={r.id} style={{ flexDirection: 'row', alignItems: 'center', backgroundColor: colors.surface, borderRadius: 12, padding: 12, marginBottom: spacing.xs, minHeight: 48 }}
               onPress={() => router.push({ pathname: '/add-health', params: { id: r.id, editType: r.recordType, editSystolic: String(r.valueData?.systolic || ''), editDiastolic: String(r.valueData?.diastolic || ''), editSugar: String(r.valueData?.sugar || ''), editWeight: String(r.valueData?.weight || '') } })}
             >

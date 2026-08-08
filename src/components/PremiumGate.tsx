@@ -27,7 +27,7 @@ export function PremiumGate({ children, featureName }: PremiumGateProps) {
           {featureName || 'Bu özellik'} premium üyelik gerektirir.
         </Text>
         <TouchableOpacity style={styles.btn} onPress={() => router.push('/subscribe')}>
-          <Text style={{ ...typography.button, color: '#FFFFFF' }}>Premium'a Geç</Text>
+          <Text style={{ ...typography.button, color: colors.onPrimary }}>Premium'a Geç</Text>
         </TouchableOpacity>
         <TouchableOpacity style={styles.back} onPress={() => router.back()}>
           <Text style={{ ...typography.body, color: colors.textLight }}>← Geri</Text>

@@ -1,19 +1,37 @@
-name: Famicare CI
+name: CI
 
 on:
   push:
     branches: [main]
   pull_request:
-    branches: [main]
 
 jobs:
-  lint-and-typecheck:
+  verify:
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
-          node-version: 20
-          cache: 'npm'
-      - run: npm ci
-      - run: npx tsc --noEmit
+          node-version: 22.13.0
+          cache: npm
+          cache-dependency-path: |
+            package-lock.json
+            api/package-lock.json
+      - name: Install mobile dependencies
+        run: npm ci
+      - name: Type-check mobile app
+        run: npm run typecheck
+      - name: Test mobile units
+        run: npm run test:mobile
+      - name: Validate Expo dependency versions
+        run: npx expo install --check
+      - name: Install API dependencies
+        working-directory: api
+        run: npm ci
+      - name: Test API
+        working-directory: api
+        run: npm test
+      - name: Check API entry point
+        working-directory: api
+        run: npm run build

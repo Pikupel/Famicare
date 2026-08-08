@@ -70,7 +70,7 @@ export default function ReviewScreen() {
                   <Text style={{ ...typography.caption, color: colors.textSecondary }}>⏰ {log.scheduledTime} • Durum: Yanıtsız</Text>
                 </View>
                 <TouchableOpacity style={styles.actionBtn} onPress={() => markTaken(log, log.medication?.name || '')}>
-                  <Text style={{ ...typography.small, color: '#FFF', fontWeight: '600' }}>✅ Alındı</Text>
+                  <Text style={{ ...typography.small, color: colors.onPrimary, fontWeight: '600' }}>✅ Alındı</Text>
                 </TouchableOpacity>
               </View>
             ))}

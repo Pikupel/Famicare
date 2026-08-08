@@ -9,6 +9,7 @@ import { useAuthStore } from '../src/stores/useAuthStore';
 import { EmptyState } from '../src/components/EmptyState';
 import { BottomNav } from '../src/components/BottomNav';
 import { useThemedStyles } from '../src/theme/ThemeProvider';
+import type { Medication } from '../src/types/models';
 
 export default function MedicationScreen() {
   const styles = useThemedStyles(baseStyles);
@@ -25,14 +26,14 @@ export default function MedicationScreen() {
     { label: 'Randevular', icon: '◷', route: '/appointments' },
     { label: 'Profil', icon: '◉', route: '/profile' },
   ];
-  const [medications, setMedications] = useState<any[]>([]);
+  const [medications, setMedications] = useState<Medication[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
 
   const loadData = useCallback(async () => {
     if (!profileId) { setLoading(false); return; }
     try {
-      const data = await api.get<any[]>(`/medications/profile/${profileId}`);
+      const data = await api.get<Medication[]>(`/medications/profile/${profileId}`);
       setMedications(data);
     } catch (error: any) {
       Alert.alert('İlaçlar yüklenemedi', error?.message || 'Lütfen tekrar deneyin.');
@@ -72,8 +73,8 @@ export default function MedicationScreen() {
         </View>
         {medications.length === 0 ? (
           <EmptyState icon="💊" title="Henüz ilaç eklenmemiş" description="Yukarıdaki butonu kullanarak ilaç ekleyebilirsiniz." />
-        ) : medications.map((m: any) => (
-          <TouchableOpacity key={m.id} style={[styles.card, shadow.card]} onPress={() => router.push({ pathname: '/edit-medication', params: { id: m.id, medName: m.name, medDosage: m.dosage, editTimes: (m.times || []).join(','), medStock: m.stockTotal || '', medPurpose: m.purpose || '' } })}>
+        ) : medications.map((m) => (
+          <TouchableOpacity key={m.id} style={[styles.card, shadow.card]} onPress={() => router.push({ pathname: '/edit-medication', params: { id: m.id, medName: m.name, medDosage: m.dosage, editTimes: (m.times || []).join(','), medStock: m.stockTotal ?? '', medPurpose: m.purpose || '', medUnitsPerDose: m.unitsPerDose || 1 } })}>
             <View style={{ width: 56 }}><Text style={{ ...typography.h2, fontSize: 20, color: colors.text }}>{m.times?.[0] || '--'}</Text></View>
             <View style={{ flex: 1 }}>
               <Text style={{ ...typography.body, fontWeight: '500', color: colors.text }}>{m.name}</Text>

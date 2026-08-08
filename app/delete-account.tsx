@@ -8,6 +8,7 @@ import { Button } from '../src/components/Button';
 import { api } from '../src/services/api';
 import { useAuthStore } from '../src/stores/useAuthStore';
 import { useThemedStyles } from '../src/theme/ThemeProvider';
+import { clearLocalUserData } from '../src/services/auth-cleanup';
 
 export default function DeleteAccountScreen() {
   const styles = useThemedStyles(baseStyles);
@@ -32,6 +33,7 @@ export default function DeleteAccountScreen() {
             setDeleting(true);
             try {
               await api.del('/me', { pin, confirmation });
+              await clearLocalUserData();
               logout();
               Alert.alert('Hesap silindi', 'Hesabınız ve ilişkili uygulama verileriniz silindi.', [
                 { text: 'Tamam', onPress: () => router.replace('/welcome') }

@@ -14,6 +14,8 @@
 - Gizlilik politikası: `https://famicare-production-f63d.up.railway.app/privacy`
 - Web hesap silme: `https://famicare-production-f63d.up.railway.app/delete-account`
 - Destek e-postası: `destek@famicare.app` — yayın öncesi gerçekten çalıştığı doğrulanmalı veya değiştirilmelidir.
+- RevenueCat webhook: `/api/v1/webhooks/revenuecat`; Authorization ve HMAC doğrulaması Railway secret'larıyla yapılandırılmalı.
+- Git geçmişindeki eski `api/db.json` temizlenmeden ve etkilenen kişisel veri olayı değerlendirilmeden mağaza yayını yapılmamalı.
 - Android paket adı: `com.famicare.app`
 - iOS Bundle ID: `com.famicare.app`
 

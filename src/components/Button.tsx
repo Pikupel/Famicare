@@ -14,7 +14,7 @@ export function Button({ title, onPress, variant = 'primary', style, disabled, a
       accessibilityLabel={accessibilityLabel || title}
       accessibilityRole="button"
     >
-      <Text style={[styles.text, { color: variant === 'primary' ? '#FFF' : colors.primary }]}>{title}</Text>
+      <Text style={[styles.text, { color: variant === 'primary' ? colors.onPrimary : colors.primary }]}>{title}</Text>
     </TouchableOpacity>
   );
 }

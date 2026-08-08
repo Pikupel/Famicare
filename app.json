@@ -10,7 +10,15 @@
     "ios": {
       "supportsTablet": true,
       "bundleIdentifier": "com.famicare.app",
-      "infoPlist": {}
+      "infoPlist": {},
+      "privacyManifests": {
+        "NSPrivacyAccessedAPITypes": [
+          {
+            "NSPrivacyAccessedAPIType": "NSPrivacyAccessedAPICategoryUserDefaults",
+            "NSPrivacyAccessedAPITypeReasons": ["CA92.1"]
+          }
+        ]
+      }
     },
     "android": {
       "adaptiveIcon": {
@@ -32,11 +40,12 @@
         "expo-build-properties",
         {
           "android": {
-            "compileSdkVersion": 35,
-            "targetSdkVersion": 35
+            "compileSdkVersion": 36,
+            "targetSdkVersion": 36
           },
           "ios": {
-            "deploymentTarget": "16.4"
+            "deploymentTarget": "16.4",
+            "privacyManifestAggregationEnabled": true
           }
         }
       ],

@@ -1,9 +1,15 @@
 import { db, uuid, pgPool } from '../db.js';
 import { sendPush, checkPushReceipts } from './push.js';
+import { localDateTimeParts, isMedicationActiveOn } from '../utils/date.js';
 
 const CHECK_INTERVAL = 5 * 60 * 1000;
 let intervalId = null;
 let isRunning = false;
+const schedulerStatus = { lastStartedAt: null, lastSuccessAt: null, lastError: null };
+
+export function getSchedulerStatus() {
+  return { ...schedulerStatus, running: isRunning };
+}
 
 export function startScheduler() {
   if (intervalId) return;
@@ -19,30 +25,10 @@ export function stopScheduler() {
   intervalId = null;
 }
 
-function localParts(date, timezone = 'Europe/Istanbul') {
-  const parts = new Intl.DateTimeFormat('en-CA', {
-    timeZone: timezone, year: 'numeric', month: '2-digit', day: '2-digit',
-    hour: '2-digit', minute: '2-digit', hourCycle: 'h23',
-  }).formatToParts(date).reduce((result, part) => ({ ...result, [part.type]: part.value }), {});
-  return {
-    date: `${parts.year}-${parts.month}-${parts.day}`,
-    time: `${parts.hour}:${parts.minute}`,
-    minutes: Number(parts.hour) * 60 + Number(parts.minute),
-  };
-}
-
-function isMedicationActive(medication, date) {
-  if (medication.isActive === false) return false;
-  if (!medication.endDate) return true;
-  const normalized = /^\d{2}\.\d{2}\.\d{4}$/.test(medication.endDate)
-    ? medication.endDate.split('.').reverse().join('-')
-    : medication.endDate;
-  return normalized >= date;
-}
-
-async function checkScheduledEvents() {
+export async function checkScheduledEvents() {
   if (isRunning) return;
   isRunning = true;
+  schedulerStatus.lastStartedAt = new Date().toISOString();
   let lockClient = null;
   const now = new Date();
   if (pgPool) {
@@ -56,29 +42,32 @@ async function checkScheduledEvents() {
   }
 
   try {
+  const pendingLogs = [];
+  const pendingNotifications = [];
+  const pushJobs = [];
   for (const medication of db.data.medications) {
     const profile = db.data.profiles.find(p => p.id === medication.profileId);
     const patient = db.data.users.find(u => u.id === (profile?.linkedUserId || medication.profileId));
     const timezone = patient?.timezone || 'Europe/Istanbul';
-    const local = localParts(now, timezone);
-    if (!medication.times?.length || !isMedicationActive(medication, local.date)) continue;
+    const local = localDateTimeParts(now, timezone);
+    if (!medication.times?.length || !isMedicationActiveOn(medication, local.date)) continue;
 
     for (const scheduledTime of medication.times) {
       const [hour, minute] = scheduledTime.split(':').map(Number);
       const elapsed = local.minutes - (hour * 60 + minute);
       if (elapsed < 30 || elapsed > 240) continue;
 
-      const log = db.data.medicationLogs.find(l =>
+      const log = [...db.data.medicationLogs, ...pendingLogs].find(l =>
         l.medicationId === medication.id && l.date === local.date && l.scheduledTime === scheduledTime
       );
       if (['taken', 'caregiver_marked'].includes(log?.status)) continue;
       if (log?.status === 'postponed' && elapsed < 45) continue;
 
       const doseKey = `${medication.id}:${local.date}:${scheduledTime}`;
-      if (db.data.notifications.some(n => n.doseKey === doseKey && n.type === 'missed_dose')) continue;
+      if ([...db.data.notifications, ...pendingNotifications].some(n => n.doseKey === doseKey && n.type === 'missed_dose')) continue;
 
       if (!log) {
-        db.data.medicationLogs.push({
+        pendingLogs.push({
           id: uuid(), medicationId: medication.id, profileId: medication.profileId,
           scheduledTime, date: local.date, status: 'unresponded',
           takenAt: null, confirmedBy: 'system', changedBy: 'system',
@@ -86,7 +75,7 @@ async function checkScheduledEvents() {
       }
 
       if (patient) {
-        db.data.notifications.push({
+        pendingNotifications.push({
           id: uuid(), userId: patient.id, type: 'missed_dose', doseKey,
           title: '⚠️ Doz Kaçırıldı', body: `${medication.name} - ${scheduledTime} dozunu almadınız.`,
           data: { medicationId: medication.id, scheduledTime },
@@ -102,15 +91,31 @@ async function checkScheduledEvents() {
           data: { medicationId: medication.id, scheduledTime, profileId: medication.profileId },
           isRead: false, createdAt: now.toISOString(),
         };
-        db.data.notifications.push(notification);
-        await sendPush(notification.userId, notification.title, notification.body, { doseKey, type: 'missed_dose', medicationId: medication.id, scheduledTime, url: `/confirm-medication?id=${encodeURIComponent(medication.id)}&name=${encodeURIComponent(medication.name)}&time=${encodeURIComponent(scheduledTime)}` });
+        pendingNotifications.push(notification);
+        pushJobs.push([notification.userId, notification.title, notification.body, { doseKey, type: 'missed_dose', medicationId: medication.id, scheduledTime, url: `/confirm-medication?id=${encodeURIComponent(medication.id)}&name=${encodeURIComponent(medication.name)}&time=${encodeURIComponent(scheduledTime)}` }]);
       }
     }
   }
 
-    await checkAppointmentReminders(now);
+    collectAppointmentReminders(now, pendingNotifications, pushJobs);
+    db.data.medicationLogs.push(...pendingLogs);
+    db.data.notifications.push(...pendingNotifications);
+    try {
+      await db.write();
+    } catch (error) {
+      const logIds = new Set(pendingLogs.map(item => item.id));
+      const notificationIds = new Set(pendingNotifications.map(item => item.id));
+      db.data.medicationLogs = db.data.medicationLogs.filter(item => !logIds.has(item.id));
+      db.data.notifications = db.data.notifications.filter(item => !notificationIds.has(item.id));
+      throw error;
+    }
+    await Promise.allSettled(pushJobs.map(([userId, title, body, data]) => sendPush(userId, title, body, data)));
     await checkPushReceipts();
-    await db.write();
+    schedulerStatus.lastSuccessAt = new Date().toISOString();
+    schedulerStatus.lastError = null;
+  } catch (error) {
+    schedulerStatus.lastError = { message: error.message, at: new Date().toISOString() };
+    throw error;
   } finally {
     if (lockClient) {
       await lockClient.query('SELECT pg_advisory_unlock(734221)').catch((e) => console.error('Scheduler: unlock hatası', e.message));
@@ -120,20 +125,20 @@ async function checkScheduledEvents() {
   }
 }
 
-async function checkAppointmentReminders(now) {
+function collectAppointmentReminders(now, pendingNotifications, pushJobs) {
   for (const appointment of db.data.appointments) {
     if (appointment.status === 'cancelled' || !appointment.date || !appointment.time) continue;
     const profile = db.data.profiles.find(p => p.id === appointment.profileId);
     const patient = db.data.users.find(u => u.id === (profile?.linkedUserId || appointment.profileId));
     const timezone = patient?.timezone || 'Europe/Istanbul';
-    const local = localParts(now, timezone);
+    const local = localDateTimeParts(now, timezone);
     const apptHour = parseInt(appointment.time.split(':')[0]);
     const apptMinute = parseInt(appointment.time.split(':')[1]);
     const apptMinutes = apptHour * 60 + apptMinute;
     const hoursUntil = (apptMinutes - local.minutes) / 60;
     if (hoursUntil <= 0 || hoursUntil > 25) continue;
     const reminderKey = `appointment:${appointment.id}:24h`;
-    if (db.data.notifications.some(n => n.reminderKey === reminderKey)) continue;
+    if ([...db.data.notifications, ...pendingNotifications].some(n => n.reminderKey === reminderKey)) continue;
     const recipients = [profile?.linkedUserId, profile?.caregiverId, appointment.profileId]
       .filter(userId => userId && db.data.users.some(user => user.id === userId));
     for (const userId of new Set(recipients)) {
@@ -144,8 +149,8 @@ async function checkAppointmentReminders(now) {
         data: { appointmentId: appointment.id, profileId: appointment.profileId },
         isRead: false, createdAt: now.toISOString(),
       };
-      db.data.notifications.push(notification);
-      await sendPush(userId, notification.title, notification.body, { type: 'appointment', appointmentId: appointment.id, url: `/appointments?profileId=${encodeURIComponent(appointment.profileId)}` });
+      pendingNotifications.push(notification);
+      pushJobs.push([userId, notification.title, notification.body, { type: 'appointment', appointmentId: appointment.id, url: `/appointments?profileId=${encodeURIComponent(appointment.profileId)}` }]);
     }
   }
 }
